@@ -1,5 +1,4 @@
 const QRCode = require('qrcode');
-const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto');
 
 /**
@@ -14,7 +13,7 @@ class QRCodeService {
    * @returns {string} Code unique
    */
   generateTicketCode(ticketId, userId, eventId) {
-    const uuid = uuidv4();
+    const uuid = crypto.randomUUID();
     const timestamp = Date.now();
     const data = `${ticketId}-${userId}-${eventId}-${timestamp}-${uuid}`;
     
