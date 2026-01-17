@@ -191,7 +191,6 @@ export function StoriesBar() {
   // Obtenir la story actuelle
   const currentGroup = userStoriesGroups[currentUserIndex];
   const currentStory = currentGroup?.stories[currentStoryIndex] || null;
-  const totalStoriesForUser = currentGroup?.stories.length || 0;
 
   if (!user) {
     return null;
@@ -289,7 +288,6 @@ export function StoriesBar() {
         story={currentStory}
         stories={currentGroup?.stories || []}
         currentIndex={currentStoryIndex}
-        totalStories={totalStoriesForUser}
         onClose={handleCloseViewer}
         onNext={handleNextStory}
         onPrev={handlePrevStory}

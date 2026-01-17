@@ -11,6 +11,7 @@ import {
   Pressable,
   PanResponder,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { X } from 'lucide-react-native';
@@ -39,14 +40,13 @@ type StoryViewerScreenProps = {
   story: Story | null;
   stories: Story[];
   currentIndex: number;
-  totalStories: number;
   onClose: () => void;
   onNext: () => void;
   onPrev: () => void;
   onStoryViewed?: (storyId: number) => void;
 };
 
-export function StoryViewerScreen({ visible, story, stories, currentIndex, totalStories, onClose, onNext, onPrev, onStoryViewed }: StoryViewerScreenProps) {
+export function StoryViewerScreen({ visible, story, stories, currentIndex, onClose, onNext, onPrev, onStoryViewed }: StoryViewerScreenProps) {
   const [progress, setProgress] = useState(0);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -111,6 +111,12 @@ export function StoryViewerScreen({ visible, story, stories, currentIndex, total
       },
     })
   ).current;
+
+  // Reset progress et image quand on change de story
+  useEffect(() => {
+    setProgress(0);
+    setImageLoaded(false);
+  }, [currentIndex]);
 
   useEffect(() => {
     if (!visible || !story) {
@@ -264,7 +270,15 @@ export function StoryViewerScreen({ visible, story, stories, currentIndex, total
           style={styles.storyImage}
           resizeMode="cover"
           onLoad={() => setImageLoaded(true)}
+          onError={() => setImageLoaded(true)} // Continuer même si erreur
         />
+        
+        {/* Loading indicator */}
+        {!imageLoaded && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#fff" />
+          </View>
+        )}
         
         {/* Gradient overlay */}
         <LinearGradient
@@ -336,6 +350,12 @@ const styles = StyleSheet.create({
   storyImage: {
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT,
+  },
+  loadingContainer: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000',
   },
   gradient: {
     ...StyleSheet.absoluteFillObject,
