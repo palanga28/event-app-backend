@@ -116,7 +116,7 @@ router.post('/', authMiddleware, async (req, res) => {
       caption: caption || null,
       created_at: now.toISOString(),
       expires_at: expiresAt.toISOString(),
-    });
+    }, true);
 
     // Ajouter une entrée d'activité pour les modérateurs
     try {
