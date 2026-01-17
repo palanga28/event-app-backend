@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import logger from '../lib/logger';
 import {
   View,
   Text,
@@ -44,7 +45,7 @@ export default function NotificationsScreen() {
       setNotifications(Array.isArray(response.data) ? response.data : []);
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Erreur de chargement');
-      console.error('Load notifications error:', err);
+      logger.error('Load notifications error:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -63,7 +64,7 @@ export default function NotificationsScreen() {
         prev.map((n) => (n.id === id ? { ...n, read_at: n.read_at || new Date().toISOString() } : n))
       );
     } catch (err) {
-      console.error('Mark as read error:', err);
+      logger.error('Mark as read error:', err);
     }
   }
 
@@ -74,7 +75,7 @@ export default function NotificationsScreen() {
         prev.map((n) => ({ ...n, read_at: n.read_at || new Date().toISOString() }))
       );
     } catch (err) {
-      console.error('Mark all as read error:', err);
+      logger.error('Mark all as read error:', err);
     }
   }
 

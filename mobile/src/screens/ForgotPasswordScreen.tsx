@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import logger from '../lib/logger';
 import {
   View,
   Text,
@@ -34,22 +35,38 @@ export default function ForgotPasswordScreen() {
     setError(null);
 
     try {
-      const response = await api.post('/api/auth/request-password-reset', { email });
+      logger.log('Demande reset password pour:', email);
       
-      if (response.data.success) {
+      // Utiliser fetch directement pour éviter les problèmes d'intercepteur axios
+      const response = await fetch('https://event-app-backend-production.up.railway.app/api/auth/request-password-reset', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+      
+      const data = await response.json();
+      logger.log('Réponse reset password:', data);
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Erreur serveur');
+      }
+      
+      if (data.success) {
         setSuccess(true);
         
         // En mode développement, afficher le token
-        if (response.data.token) {
+        if (data.token) {
           Alert.alert(
             'Token de réinitialisation (DEV)',
-            `Token: ${response.data.token}\n\nEn production, ce token sera envoyé par email.`,
+            `Token: ${data.token}\n\nEn production, ce token sera envoyé par email.`,
             [
               {
                 text: 'Copier le token',
                 onPress: () => {
                   // TODO: Copier dans le presse-papier
-                  console.log('Token:', response.data.token);
+                  logger.log('Token:', data.token);
                 }
               },
               { text: 'OK' }
@@ -58,7 +75,13 @@ export default function ForgotPasswordScreen() {
         }
       }
     } catch (err: any) {
-      setError(err?.response?.data?.message || err?.message || 'Erreur lors de la demande');
+      logger.error('Erreur reset password:', err?.message, err?.response?.status, err?.response?.data);
+      // Gérer les différents types d'erreurs
+      if (err?.message === 'Network Error' || !err?.response) {
+        setError('Erreur de connexion. Vérifiez votre connexion internet.');
+      } else {
+        setError(err?.response?.data?.message || err?.message || 'Erreur lors de la demande');
+      }
     } finally {
       setLoading(false);
     }

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import logger from '../lib/logger';
 import {
   View,
   Text,
@@ -61,7 +62,7 @@ export default function CreateEventScreen() {
             );
             return manipResult.uri;
           } catch (error) {
-            console.error('Erreur conversion image:', error);
+            logger.error('Erreur conversion image:', error);
             return asset.uri; // Fallback sur l'URI originale
           }
         })
@@ -184,7 +185,7 @@ export default function CreateEventScreen() {
       }
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Erreur lors de la création');
-      console.error('Create event error:', err);
+      logger.error('Create event error:', err);
     } finally {
       setLoading(false);
     }

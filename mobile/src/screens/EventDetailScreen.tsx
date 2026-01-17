@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import logger from '../lib/logger';
 import {
   View,
   Text,
@@ -114,7 +115,7 @@ export default function EventDetailScreen() {
         try {
           eventData.images = JSON.parse(eventData.images);
         } catch (e) {
-          console.log('Failed to parse images:', e);
+          logger.log('Failed to parse images:', e);
           eventData.images = [];
         }
       }
@@ -134,7 +135,7 @@ export default function EventDetailScreen() {
           const favIds = favRes.data.map((f: any) => f.event_id);
           setIsFavorite(favIds.includes(eventId));
         } catch (e) {
-          console.log('Favorites check failed');
+          logger.log('Favorites check failed');
         }
       }
     } catch (err: any) {
@@ -158,7 +159,7 @@ export default function EventDetailScreen() {
       }
       setIsFavorite(!isFavorite);
     } catch (err) {
-      console.error('Toggle favorite error:', err);
+      logger.error('Toggle favorite error:', err);
     }
   }
 
@@ -352,10 +353,10 @@ export default function EventDetailScreen() {
       });
 
       if (result.action === Share.sharedAction) {
-        console.log('Événement partagé');
+        logger.log('Événement partagé');
       }
     } catch (error) {
-      console.error('Erreur partage:', error);
+      logger.error('Erreur partage:', error);
       Alert.alert('Erreur', 'Impossible de partager l\'événement');
     }
   }
@@ -384,7 +385,7 @@ export default function EventDetailScreen() {
         shareEvent();
       }
     } catch (error) {
-      console.error('Erreur WhatsApp:', error);
+      logger.error('Erreur WhatsApp:', error);
       shareEvent();
     }
   }
@@ -395,7 +396,7 @@ export default function EventDetailScreen() {
     try {
       await Linking.openURL(shareUrl);
     } catch (error) {
-      console.error('Erreur ouverture URL:', error);
+      logger.error('Erreur ouverture URL:', error);
     }
   }
 
@@ -453,7 +454,7 @@ export default function EventDetailScreen() {
         [{ text: 'OK' }]
       );
     } catch (error) {
-      console.error('Erreur ajout calendrier:', error);
+      logger.error('Erreur ajout calendrier:', error);
       Alert.alert('Erreur', 'Impossible d\'ajouter l\'événement au calendrier.');
     }
   }

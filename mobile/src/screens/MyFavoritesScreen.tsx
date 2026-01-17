@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import logger from '../lib/logger';
 import {
   View,
   Text,
@@ -82,7 +83,7 @@ export default function MyFavoritesScreen() {
       const events = Array.isArray(response.data) ? response.data : [];
       setFavorites(events);
     } catch (err) {
-      console.error('Load favorites error:', err);
+      logger.error('Load favorites error:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);

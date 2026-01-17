@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,13 +13,14 @@ import {
   Animated,
   ActivityIndicator,
 } from 'react-native';
+import logger from '../lib/logger';
 import { LinearGradient } from 'expo-linear-gradient';
 import { X } from 'lucide-react-native';
 import { colors } from '../theme/colors';
 import { api } from '../lib/api';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const SWIPE_THRESHOLD = 100; // Distance minimale pour déclencher un swipe
+const SWIPE_THRESHOLD = 150; // Distance minimale pour déclencher un swipe (augmenté pour éviter fermeture accidentelle)
 
 type Story = {
   id: number;
@@ -57,13 +58,30 @@ export function StoryViewerScreen({ visible, story, stories, currentIndex, onClo
   const translateY = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(1)).current;
 
+  // Précharger l'image suivante
+  const preloadNextImage = useCallback(() => {
+    if (currentIndex < stories.length - 1) {
+      const nextStory = stories[currentIndex + 1];
+      if (nextStory?.image_url) {
+        Image.prefetch(nextStory.image_url).catch(() => {});
+      }
+    }
+  }, [currentIndex, stories]);
+
+  // Vérifier si la story est expirée
+  const isStoryExpired = useCallback((storyToCheck: Story | null) => {
+    if (!storyToCheck?.expires_at) return false;
+    return new Date(storyToCheck.expires_at) < new Date();
+  }, []);
+
   // Gesture handler pour swipe bas (fermer) et swipe horizontal (changer user)
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Activer le pan si mouvement vertical > 10 ou horizontal > 10
-        return Math.abs(gestureState.dy) > 10 || Math.abs(gestureState.dx) > 50;
+        // Activer le pan seulement si mouvement vertical significatif (> 30px)
+        // Ignorer les mouvements horizontaux pour éviter les conflits avec tap
+        return Math.abs(gestureState.dy) > 30 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
       },
       onPanResponderGrant: () => {
         setIsPaused(true);
@@ -112,11 +130,12 @@ export function StoryViewerScreen({ visible, story, stories, currentIndex, onClo
     })
   ).current;
 
-  // Reset progress et image quand on change de story
+  // Reset progress et image quand on change de story + précharger la suivante
   useEffect(() => {
     setProgress(0);
     setImageLoaded(false);
-  }, [currentIndex]);
+    preloadNextImage();
+  }, [currentIndex, preloadNextImage]);
 
   useEffect(() => {
     if (!visible || !story) {
@@ -125,12 +144,19 @@ export function StoryViewerScreen({ visible, story, stories, currentIndex, onClo
       return;
     }
 
+    // Vérifier si la story est expirée
+    if (isStoryExpired(story)) {
+      logger.log('Story expirée, passage à la suivante');
+      onNext();
+      return;
+    }
+
     // Marquer la story comme vue si pas encore fait
     if (!viewedStoriesRef.current.has(story.id)) {
       viewedStoriesRef.current.add(story.id);
       markStoryAsViewed(story.id);
     }
-  }, [visible, story]);
+  }, [visible, story, isStoryExpired, onNext]);
 
   // Reset viewed stories when viewer closes
   useEffect(() => {
@@ -348,6 +374,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
   },
   storyImage: {
+    ...StyleSheet.absoluteFillObject,
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT,
   },

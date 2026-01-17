@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import logger from '../lib/logger';
 import {
   View,
   Text,
@@ -108,7 +109,7 @@ export default function UserProfileScreen() {
       setProfileFollowing(statsRes.data.following || 0);
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Erreur de chargement');
-      console.error('Load profile error:', err);
+      logger.error('Load profile error:', err);
     } finally {
       setLoading(false);
     }
@@ -129,7 +130,7 @@ export default function UserProfileScreen() {
         setProfileFollowers(profileFollowers + 1);
       }
     } catch (err: any) {
-      console.error('Follow toggle error:', err);
+      logger.error('Follow toggle error:', err);
     } finally {
       setActionLoading(false);
     }

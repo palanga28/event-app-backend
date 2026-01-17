@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import logger from '../lib/logger';
 import {
   View,
   Text,
@@ -66,7 +67,7 @@ export default function ProfileScreen() {
       setFollowersCount(followStatsRes.data.followers || 0);
       setFollowingCount(followStatsRes.data.following || 0);
     } catch (err) {
-      console.error('Load stats error:', err);
+      logger.error('Load stats error:', err);
     } finally {
       setLoadingStats(false);
     }
@@ -99,6 +100,7 @@ export default function ProfileScreen() {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
+      presentationStyle: ImagePicker.UIImagePickerPresentationStyle.FULL_SCREEN,
     });
 
     if (!result.canceled && result.assets[0]) {
@@ -151,6 +153,7 @@ export default function ProfileScreen() {
       allowsEditing: true,
       aspect: [9, 16],
       quality: 0.8,
+      presentationStyle: ImagePicker.UIImagePickerPresentationStyle.FULL_SCREEN,
     });
 
     if (!result.canceled && result.assets[0]) {

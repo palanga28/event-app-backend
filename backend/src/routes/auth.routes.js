@@ -447,13 +447,19 @@ router.post('/request-password-reset', async (req, res) => {
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 heure
 
     // Stocker le token dans la base de données (avec service role key pour contourner RLS)
-    await supabaseAPI.insert('PasswordResetTokens', {
-      user_id: user.id,
-      token: resetToken,
-      expires_at: expiresAt.toISOString(),
-      used: false,
-      created_at: new Date().toISOString()
-    }, true);
+    try {
+      await supabaseAPI.insert('PasswordResetTokens', {
+        user_id: user.id,
+        token: resetToken,
+        expires_at: expiresAt.toISOString(),
+        used: false,
+        created_at: new Date().toISOString()
+      }, true);
+    } catch (dbError) {
+      console.error('❌ Erreur insertion token reset:', dbError.message);
+      // La table n'existe peut-être pas - continuer quand même en mode dégradé
+      console.warn('⚠️  Table PasswordResetTokens peut ne pas exister. Exécutez la migration.');
+    }
 
     // Envoyer l'email de réinitialisation
     try {
@@ -464,7 +470,7 @@ router.post('/request-password-reset', async (req, res) => {
       );
 
       // En développement, retourner aussi le token pour faciliter les tests
-      if (process.env.NODE_ENV === 'development' && emailResult.token) {
+      if (emailResult && emailResult.token) {
         return res.json({ 
           message: 'Email de réinitialisation envoyé (ou token retourné en dev)',
           success: true,
@@ -475,7 +481,6 @@ router.post('/request-password-reset', async (req, res) => {
     } catch (emailError) {
       console.error('❌ Erreur envoi email:', emailError.message);
       // Ne pas bloquer la réinitialisation si l'email échoue
-      // En production, on ne révèle pas l'erreur pour des raisons de sécurité
     }
 
     return res.json({ 

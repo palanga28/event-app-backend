@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import logger from '../lib/logger';
 import {
   View,
   Text,
@@ -45,7 +46,7 @@ export default function MyEventsScreen() {
       const eventsData = Array.isArray(response.data) ? response.data : (response.data.events || []);
       setEvents(eventsData);
     } catch (err) {
-      console.error('Load my events error:', err);
+      logger.error('Load my events error:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);

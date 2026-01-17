@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import logger from '../lib/logger';
 import {
   View,
   Text,
@@ -120,7 +121,7 @@ export default function HomeScreen() {
             const allEvents = Array.isArray(countRes.data) ? countRes.data : [];
             setTotalEvents(allEvents.length);
           } catch (e) {
-            console.log('Count events failed');
+            logger.log('Count events failed');
           }
         }
 
@@ -131,7 +132,7 @@ export default function HomeScreen() {
             setFavoriteIds(favIds);
             await cacheService.cacheUserFavorites(user.id.toString(), favRes.data);
           } catch (e) {
-            console.log('Favorites load failed');
+            logger.log('Favorites load failed');
           }
         }
       } else {
@@ -163,7 +164,7 @@ export default function HomeScreen() {
       } else {
         setError(err?.message || 'Erreur de chargement');
       }
-      console.error('Load events error:', err);
+      logger.error('Load events error:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -198,7 +199,7 @@ export default function HomeScreen() {
       } else {
         setFavoriteIds(favoriteIds.filter(id => id !== eventId));
       }
-      console.error('Toggle favorite error:', err);
+      logger.error('Toggle favorite error:', err);
     }
   }
 

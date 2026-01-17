@@ -27,7 +27,7 @@ api.interceptors.request.use(
 );
 
 // Routes qui ne nécessitent pas de refresh token
-const authRoutes = ['/api/auth/login', '/api/auth/register', '/api/auth/refresh'];
+const authRoutes = ['/api/auth/login', '/api/auth/register', '/api/auth/refresh', '/api/auth/request-password-reset', '/api/auth/reset-password'];
 
 // Intercepteur pour gérer le refresh token
 api.interceptors.response.use(

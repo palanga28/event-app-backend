@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import logger from '../lib/logger';
 import {
   View,
   Text,
@@ -44,6 +45,7 @@ export function StoriesBar() {
   const { user } = useAuth();
   const [userStoriesGroups, setUserStoriesGroups] = useState<UserStories[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [currentUserIndex, setCurrentUserIndex] = useState(0);
   const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
   const [viewerVisible, setViewerVisible] = useState(false);
@@ -52,8 +54,17 @@ export function StoriesBar() {
     loadStories();
   }, []);
 
+  // Rafraîchir les stories quand le viewer se ferme
+  useEffect(() => {
+    if (!viewerVisible) {
+      loadStories();
+    }
+  }, [viewerVisible]);
+
   async function loadStories() {
     try {
+      setError(null);
+      
       if (!user) {
         setUserStoriesGroups([]);
         setLoading(false);
@@ -63,9 +74,15 @@ export function StoriesBar() {
       const response = await api.get('/api/stories/visible');
       const storiesData = Array.isArray(response.data) ? response.data : [];
       
-      // Grouper par utilisateur et garder TOUTES les stories
+      // Filtrer les stories expirées côté client (double sécurité)
+      const now = new Date();
+      const validStories = storiesData.filter((s: Story) => 
+        !s.expires_at || new Date(s.expires_at) > now
+      );
+      
+      // Grouper par utilisateur et garder TOUTES les stories valides
       const storiesByUser = new Map<number, Story[]>();
-      storiesData.forEach((story: Story) => {
+      validStories.forEach((story: Story) => {
         if (story.user_id) {
           const existing = storiesByUser.get(story.user_id) || [];
           existing.push(story);
@@ -112,7 +129,8 @@ export function StoriesBar() {
 
       setUserStoriesGroups(groups);
     } catch (err) {
-      console.error('Load stories error:', err);
+      logger.error('Load stories error:', err);
+      setError('Impossible de charger les stories');
       setUserStoriesGroups([]);
     } finally {
       setLoading(false);

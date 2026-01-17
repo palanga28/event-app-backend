@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import logger from '../lib/logger';
 import {
   View,
   Text,
@@ -62,7 +63,7 @@ export default function PaymentScreen() {
         }
         setPollingCount((c) => c + 1);
       } catch (err) {
-        console.error('Polling error:', err);
+        logger.error('Polling error:', err);
       }
     }, 5000);
 

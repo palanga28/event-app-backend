@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import logger from '../lib/logger';
 import {
   View,
   Text,
@@ -68,7 +69,7 @@ export default function SalesStatsScreen() {
       const response = await api.get(`/api/events/${eventId}/sales-stats`);
       setStats(response.data);
     } catch (err: any) {
-      console.error('Erreur chargement stats:', err);
+      logger.error('Erreur chargement stats:', err);
       setError(err?.response?.data?.message || 'Erreur de chargement');
     } finally {
       setLoading(false);

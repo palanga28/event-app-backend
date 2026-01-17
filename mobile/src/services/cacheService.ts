@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
+import logger from '../lib/logger';
 
 const CACHE_KEYS = {
   EVENTS: 'cached_events',
@@ -81,7 +82,7 @@ class CacheService {
       };
       await AsyncStorage.setItem(key, JSON.stringify(cacheItem));
     } catch (error) {
-      console.error('Cache set error:', error);
+      logger.error('Cache set error:', error);
     }
   }
 
@@ -101,7 +102,7 @@ class CacheService {
 
       return cacheItem.data;
     } catch (error) {
-      console.error('Cache get error:', error);
+      logger.error('Cache get error:', error);
       return null;
     }
   }
@@ -117,7 +118,7 @@ class CacheService {
 
       return { data: cacheItem.data, isExpired };
     } catch (error) {
-      console.error('Cache get error:', error);
+      logger.error('Cache get error:', error);
       return { data: null, isExpired: true };
     }
   }
@@ -127,7 +128,7 @@ class CacheService {
     try {
       await AsyncStorage.removeItem(key);
     } catch (error) {
-      console.error('Cache remove error:', error);
+      logger.error('Cache remove error:', error);
     }
   }
 
@@ -137,7 +138,7 @@ class CacheService {
       const keys = Object.values(CACHE_KEYS);
       await AsyncStorage.multiRemove(keys);
     } catch (error) {
-      console.error('Cache clear error:', error);
+      logger.error('Cache clear error:', error);
     }
   }
 
@@ -211,7 +212,7 @@ class CacheService {
       queue.push(newAction);
       await AsyncStorage.setItem(CACHE_KEYS.OFFLINE_QUEUE, JSON.stringify(queue));
     } catch (error) {
-      console.error('Add to offline queue error:', error);
+      logger.error('Add to offline queue error:', error);
     }
   }
 
@@ -220,7 +221,7 @@ class CacheService {
       const queue = await AsyncStorage.getItem(CACHE_KEYS.OFFLINE_QUEUE);
       return queue ? JSON.parse(queue) : [];
     } catch (error) {
-      console.error('Get offline queue error:', error);
+      logger.error('Get offline queue error:', error);
       return [];
     }
   }
@@ -233,7 +234,7 @@ class CacheService {
     const queue = await this.getOfflineQueue();
     if (queue.length === 0) return;
 
-    console.log(`📡 Syncing ${queue.length} offline actions...`);
+    logger.log(`📡 Syncing ${queue.length} offline actions...`);
 
     // Importer l'API dynamiquement pour éviter les dépendances circulaires
     const { api } = await import('../lib/api');
@@ -251,14 +252,14 @@ class CacheService {
             await api.post('/api/comments', action.payload);
             break;
         }
-        console.log(`✅ Synced action: ${action.type}`);
+        logger.log(`✅ Synced action: ${action.type}`);
       } catch (error) {
-        console.error(`❌ Failed to sync action: ${action.type}`, error);
+        logger.error(`❌ Failed to sync action: ${action.type}`, error);
       }
     }
 
     await this.clearOfflineQueue();
-    console.log('📡 Offline sync complete');
+    logger.log('📡 Offline sync complete');
   }
 
   // === Utilitaires ===

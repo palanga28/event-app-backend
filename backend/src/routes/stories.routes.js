@@ -153,6 +153,88 @@ router.get('/mine', authMiddleware, async (req, res) => {
   }
 });
 
+// Récupérer une story spécifique
+router.get('/:id', authMiddleware, async (req, res) => {
+  const storyId = parseInt(req.params.id, 10);
+  
+  try {
+    if (isNaN(storyId) || storyId <= 0) {
+      return res.status(400).json({ message: 'ID story invalide' });
+    }
+
+    const stories = await supabaseAPI.select('Stories', { id: storyId }, {}, true);
+    if (!stories || stories.length === 0) {
+      return res.status(404).json({ message: 'Story non trouvée' });
+    }
+
+    const story = stories[0];
+    
+    // Récupérer l'utilisateur
+    const users = await supabaseAPI.select('Users', { id: story.user_id }, {}, true);
+    const user = users[0];
+    
+    res.json({
+      ...story,
+      user: user ? { id: user.id, name: user.name, avatar_url: user.avatar_url } : null
+    });
+  } catch (err) {
+    console.error('Erreur récupération story:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// Supprimer une story (propriétaire uniquement)
+router.delete('/:id', authMiddleware, async (req, res) => {
+  const storyId = parseInt(req.params.id, 10);
+  
+  try {
+    if (isNaN(storyId) || storyId <= 0) {
+      return res.status(400).json({ message: 'ID story invalide' });
+    }
+
+    // Vérifier que la story existe et appartient à l'utilisateur
+    const stories = await supabaseAPI.select('Stories', { id: storyId }, {}, true);
+    if (!stories || stories.length === 0) {
+      return res.status(404).json({ message: 'Story non trouvée' });
+    }
+
+    const story = stories[0];
+    if (story.user_id !== req.user.id && req.user.role !== 'admin' && req.user.role !== 'moderator') {
+      return res.status(403).json({ message: 'Non autorisé à supprimer cette story' });
+    }
+
+    // Supprimer les vues associées
+    try {
+      await supabaseAPI.delete('StoryViews', { story_id: storyId }, true);
+    } catch (viewErr) {
+      // Table might not exist, ignore
+    }
+
+    // Supprimer la story
+    await supabaseAPI.delete('Stories', { id: storyId }, true);
+
+    // Log d'audit
+    try {
+      await supabaseAPI.insert('AuditLogs', {
+        actor_id: req.user.id,
+        action: 'story_deleted',
+        entity_type: 'story',
+        entity_id: storyId,
+        metadata: { deleted_by: req.user.id },
+        ip: req.ip,
+        created_at: new Date().toISOString()
+      });
+    } catch (logErr) {
+      // Ignore audit log errors
+    }
+
+    res.json({ message: 'Story supprimée' });
+  } catch (err) {
+    console.error('Erreur suppression story:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
 router.post('/', authMiddleware, async (req, res) => {
   const { imageUrl, caption } = req.body;
 

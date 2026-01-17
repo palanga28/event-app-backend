@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import logger from '../lib/logger';
 import {
   View,
   Text,
@@ -130,7 +131,7 @@ export default function SearchEventsScreen() {
       setEvents(data);
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Erreur de recherche');
-      console.error('Search error:', err);
+      logger.error('Search error:', err);
     } finally {
       setLoading(false);
     }

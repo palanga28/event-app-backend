@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import notificationService from '../services/notificationService';
+import logger from '../lib/logger';
 
 /**
  * Hook pour gérer les notifications push
@@ -24,7 +25,7 @@ export function useNotifications() {
       setPushToken(token);
       setIsInitialized(true);
     } catch (error) {
-      console.error('Erreur initialisation notifications:', error);
+      logger.error('Erreur initialisation notifications:', error);
       setIsInitialized(true);
     }
   };
@@ -33,7 +34,7 @@ export function useNotifications() {
     try {
       await notificationService.sendTestNotification();
     } catch (error) {
-      console.error('Erreur envoi notification test:', error);
+      logger.error('Erreur envoi notification test:', error);
       throw error;
     }
   };
@@ -46,7 +47,7 @@ export function useNotifications() {
     try {
       await notificationService.scheduleLocalNotification(title, body, seconds);
     } catch (error) {
-      console.error('Erreur planification notification:', error);
+      logger.error('Erreur planification notification:', error);
       throw error;
     }
   };

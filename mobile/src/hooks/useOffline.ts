@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { cacheService } from '../services/cacheService';
 import { api } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
+import logger from '../lib/logger';
 
 interface UseOfflineOptions {
   autoFetch?: boolean;
@@ -39,7 +40,7 @@ export function useOfflineEvents(options: UseOfflineOptions = { autoFetch: true 
         }
       }
     } catch (error) {
-      console.error('Fetch events error:', error);
+      logger.error('Fetch events error:', error);
       // En cas d'erreur, essayer le cache
       const cachedEvents = await cacheService.getCachedEvents();
       if (cachedEvents) {
@@ -96,7 +97,7 @@ export function useOfflineFeaturedEvents() {
         }
       }
     } catch (error) {
-      console.error('Fetch featured events error:', error);
+      logger.error('Fetch featured events error:', error);
       const cachedEvents = await cacheService.getCachedFeaturedEvents();
       if (cachedEvents) {
         setEvents(cachedEvents);
@@ -142,7 +143,7 @@ export function useOfflineTickets() {
         }
       }
     } catch (error) {
-      console.error('Fetch tickets error:', error);
+      logger.error('Fetch tickets error:', error);
       if (user?.id) {
         const cachedTickets = await cacheService.getCachedUserTickets(user.id.toString());
         if (cachedTickets) {

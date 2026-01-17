@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import logger from '../lib/logger';
 import {
   View,
   Text,
@@ -53,7 +54,7 @@ export default function MyTicketsScreen() {
       const response = await api.get('/api/tickets/user');
       setTickets(response.data || []);
     } catch (err) {
-      console.error('Load tickets error:', err);
+      logger.error('Load tickets error:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);

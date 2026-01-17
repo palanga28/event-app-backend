@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import logger from '../lib/logger';
 import {
   View,
   Text,
@@ -49,7 +50,7 @@ export default function OrganizerQRCodeScreen() {
           eventData.organizer_qr_code = generateRes.data.organizer_qr_code;
           eventData.organizer_qr_code_image = generateRes.data.organizer_qr_code_image;
         } catch (genErr: any) {
-          console.error('Erreur génération QR code:', genErr);
+          logger.error('Erreur génération QR code:', genErr);
           setError('Impossible de générer le QR code organisateur');
           return;
         }
@@ -57,7 +58,7 @@ export default function OrganizerQRCodeScreen() {
 
       setEvent(eventData);
     } catch (err: any) {
-      console.error('Erreur chargement QR code:', err);
+      logger.error('Erreur chargement QR code:', err);
       setError(err?.response?.data?.message || 'Erreur lors du chargement');
     } finally {
       setLoading(false);

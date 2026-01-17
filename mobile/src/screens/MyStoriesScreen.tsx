@@ -76,6 +76,7 @@ export default function MyStoriesScreen() {
       allowsEditing: true,
       aspect: [9, 16],
       quality: 0.8,
+      presentationStyle: ImagePicker.UIImagePickerPresentationStyle.FULL_SCREEN,
     });
 
     if (!result.canceled && result.assets[0]) {

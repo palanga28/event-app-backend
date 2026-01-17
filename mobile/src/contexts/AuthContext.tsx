@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { storage } from '../lib/storage';
 import { api } from '../lib/api';
+import logger from '../lib/logger';
 
 type User = {
   id: number;
@@ -39,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(response.data.user);
       }
     } catch (error) {
-      console.log('Auth check failed:', error);
+      logger.log('Auth check failed:', error);
       await storage.deleteItemAsync('accessToken');
       await storage.deleteItemAsync('refreshToken');
     } finally {
@@ -75,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await api.post('/api/auth/logout', { refreshToken });
       }
     } catch (error) {
-      console.log('Logout error:', error);
+      logger.log('Logout error:', error);
     } finally {
       await storage.deleteItemAsync('accessToken');
       await storage.deleteItemAsync('refreshToken');
@@ -88,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await api.get('/api/auth/me');
       setUser(response.data.user);
     } catch (error) {
-      console.log('Refresh user failed:', error);
+      logger.log('Refresh user failed:', error);
     }
   }
 

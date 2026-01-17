@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import logger from '../lib/logger';
 import {
   View,
   Text,
@@ -58,7 +59,7 @@ export default function TicketDetailScreen() {
       const response = await api.get(`/api/tickets/${ticketId}`);
       setTicket(response.data);
     } catch (error: any) {
-      console.error('Erreur chargement ticket:', error);
+      logger.error('Erreur chargement ticket:', error);
       Alert.alert('Erreur', 'Impossible de charger le ticket');
       navigation.goBack();
     } finally {
@@ -74,7 +75,7 @@ export default function TicketDetailScreen() {
         message: `Mon ticket pour ${ticket.event.title}\nDate: ${new Date(ticket.event.date || ticket.event.start_date || new Date()).toLocaleDateString('fr-FR')}\nLieu: ${ticket.event.location}`,
       });
     } catch (error) {
-      console.error('Erreur partage:', error);
+      logger.error('Erreur partage:', error);
     }
   };
 

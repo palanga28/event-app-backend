@@ -316,6 +316,7 @@ router.get('/', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit, 10) || 12;
     const offset = parseInt(req.query.offset, 10) || 0;
+    const includePast = req.query.includePast === 'true'; // Option pour inclure les passés
 
     // D'abord récupérer les IDs des utilisateurs bannis
     const bannedUsers = await supabaseAPI.select('Users', { banned: true }, { limit: 1000 });
@@ -328,8 +329,26 @@ router.get('/', async (req, res) => {
       { limit: 1000, offset: 0, order: 'boost_score.desc,start_date.asc' }
     );
 
-    // Filtrer les événements des organisateurs bannis
-    const filteredEvents = allEvents.filter((e) => !bannedUserIds.has(e.organizer_id));
+    // Date limite: événements terminés depuis plus de 24h sont masqués
+    const now = new Date();
+    const cutoffDate = new Date(now.getTime() - 24 * 60 * 60 * 1000); // 24h avant maintenant
+
+    // Filtrer les événements:
+    // 1. Exclure les organisateurs bannis
+    // 2. Exclure les événements terminés depuis plus de 24h (sauf si includePast=true)
+    const filteredEvents = allEvents.filter((e) => {
+      // Exclure les organisateurs bannis
+      if (bannedUserIds.has(e.organizer_id)) return false;
+      
+      // Si includePast=true, on garde tous les événements
+      if (includePast) return true;
+      
+      // Sinon, exclure les événements dont end_date est passée depuis plus de 24h
+      const endDate = e.end_date ? new Date(e.end_date) : null;
+      if (endDate && endDate < cutoffDate) return false;
+      
+      return true;
+    });
 
     // Appliquer la pagination sur les événements filtrés
     const paginatedEvents = filteredEvents.slice(offset, offset + limit);
@@ -486,6 +505,7 @@ router.get('/search', async (req, res) => {
     const tagSlugs = parseCsv(req.query.tagSlugs);
     const limit = req.query.limit;
     const offset = req.query.offset;
+    const includePast = req.query.includePast === 'true';
 
     // base: published
     let events = await supabaseAPI.select(
@@ -493,6 +513,16 @@ router.get('/search', async (req, res) => {
       { status: 'published' },
       { limit: 200, offset: 0, order: 'start_date.asc' }
     );
+
+    // Filtrer les événements terminés depuis plus de 24h (sauf si includePast=true)
+    if (!includePast) {
+      const now = new Date();
+      const cutoffDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      events = events.filter((e) => {
+        const endDate = e.end_date ? new Date(e.end_date) : null;
+        return !endDate || endDate >= cutoffDate;
+      });
+    }
 
     if (q) {
       const qLower = q.toLowerCase();

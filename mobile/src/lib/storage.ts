@@ -21,5 +21,24 @@ const webStorage = {
   },
 };
 
+// Wrapper pour SecureStore qui valide les valeurs
+const secureStorageWrapper = {
+  async getItemAsync(key: string): Promise<string | null> {
+    return SecureStore.getItemAsync(key);
+  },
+  async setItemAsync(key: string, value: any): Promise<void> {
+    // S'assurer que la valeur est une string
+    if (value === null || value === undefined) {
+      console.warn(`SecureStore: Ignoring null/undefined value for key "${key}"`);
+      return;
+    }
+    const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
+    return SecureStore.setItemAsync(key, stringValue);
+  },
+  async deleteItemAsync(key: string): Promise<void> {
+    return SecureStore.deleteItemAsync(key);
+  },
+};
+
 // Utilise SecureStore sur natif, localStorage sur web
-export const storage = Platform.OS === 'web' ? webStorage : SecureStore;
+export const storage = Platform.OS === 'web' ? webStorage : secureStorageWrapper;

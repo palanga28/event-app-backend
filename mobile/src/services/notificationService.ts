@@ -3,6 +3,7 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { api } from '../lib/api';
+import logger from '../lib/logger';
 
 // Configuration du comportement des notifications
 Notifications.setNotificationHandler({
@@ -27,7 +28,7 @@ class NotificationService {
     try {
       // Vérifier si c'est un appareil physique
       if (!Device.isDevice) {
-        console.log('⚠️  Les notifications push ne fonctionnent pas sur simulateur');
+        logger.log('⚠️  Les notifications push ne fonctionnent pas sur simulateur');
         return null;
       }
 
@@ -41,7 +42,7 @@ class NotificationService {
       }
 
       if (finalStatus !== 'granted') {
-        console.log('❌ Permission de notifications refusée');
+        logger.log('❌ Permission de notifications refusée');
         return null;
       }
 
@@ -57,10 +58,10 @@ class NotificationService {
       // Configurer les listeners
       this.setupListeners();
 
-      console.log('✅ Notifications initialisées');
+      logger.log('✅ Notifications initialisées');
       return token;
     } catch (error) {
-      console.error('❌ Erreur initialisation notifications:', error);
+      logger.error('❌ Erreur initialisation notifications:', error);
       return null;
     }
   }
@@ -76,10 +77,10 @@ class NotificationService {
         projectId: projectId || undefined,
       });
 
-      console.log('📱 Token push:', token.data);
+      logger.log('📱 Token push:', token.data);
       return token.data;
     } catch (error) {
-      console.error('❌ Erreur obtention token push:', error);
+      logger.error('❌ Erreur obtention token push:', error);
       return null;
     }
   }
@@ -96,9 +97,9 @@ class NotificationService {
         deviceId,
       });
 
-      console.log('✅ Token enregistré au backend');
+      logger.log('✅ Token enregistré au backend');
     } catch (error) {
-      console.error('❌ Erreur enregistrement token:', error);
+      logger.error('❌ Erreur enregistrement token:', error);
     }
   }
 
@@ -113,9 +114,9 @@ class NotificationService {
         deviceId,
       });
 
-      console.log('✅ Token supprimé du backend');
+      logger.log('✅ Token supprimé du backend');
     } catch (error) {
-      console.error('❌ Erreur suppression token:', error);
+      logger.error('❌ Erreur suppression token:', error);
     }
   }
 
@@ -126,7 +127,7 @@ class NotificationService {
     // Listener pour les notifications reçues quand l'app est au premier plan
     this.notificationListener = Notifications.addNotificationReceivedListener(
       (notification) => {
-        console.log('📬 Notification reçue:', notification);
+        logger.log('📬 Notification reçue:', notification);
         // Tu peux ajouter une logique personnalisée ici
       }
     );
@@ -134,7 +135,7 @@ class NotificationService {
     // Listener pour les interactions avec les notifications
     this.responseListener = Notifications.addNotificationResponseReceivedListener(
       (response) => {
-        console.log('👆 Notification cliquée:', response);
+        logger.log('👆 Notification cliquée:', response);
         const data = response.notification.request.content.data;
         
         // Navigation basée sur le type de notification
@@ -149,7 +150,7 @@ class NotificationService {
   private handleNotificationNavigation(data: any) {
     // Cette fonction sera appelée quand l'utilisateur clique sur une notification
     // Tu peux utiliser le navigation ref pour naviguer
-    console.log('🔗 Navigation vers:', data);
+    logger.log('🔗 Navigation vers:', data);
 
     // Exemple de navigation (à implémenter avec ton système de navigation)
     if (data.screen) {
@@ -163,10 +164,10 @@ class NotificationService {
   async sendTestNotification() {
     try {
       const response = await api.post('/api/push-notifications/test');
-      console.log('✅ Notification de test envoyée:', response.data);
+      logger.log('✅ Notification de test envoyée:', response.data);
       return response.data;
     } catch (error) {
-      console.error('❌ Erreur envoi notification test:', error);
+      logger.error('❌ Erreur envoi notification test:', error);
       throw error;
     }
   }
@@ -187,14 +188,14 @@ class NotificationService {
           sound: true,
         },
         trigger: {
-          type: 'timeInterval' as const,
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
           seconds,
         },
       });
 
-      console.log(`✅ Notification locale planifiée dans ${seconds}s`);
+      logger.log(`✅ Notification locale planifiée dans ${seconds}s`);
     } catch (error) {
-      console.error('❌ Erreur planification notification locale:', error);
+      logger.error('❌ Erreur planification notification locale:', error);
     }
   }
 
@@ -204,9 +205,9 @@ class NotificationService {
   async cancelAllNotifications() {
     try {
       await Notifications.cancelAllScheduledNotificationsAsync();
-      console.log('✅ Toutes les notifications annulées');
+      logger.log('✅ Toutes les notifications annulées');
     } catch (error) {
-      console.error('❌ Erreur annulation notifications:', error);
+      logger.error('❌ Erreur annulation notifications:', error);
     }
   }
 
@@ -224,7 +225,7 @@ class NotificationService {
       
       // Ne pas planifier si la date est passée
       if (reminderDate <= new Date()) {
-        console.log('⚠️ Date de rappel déjà passée');
+        logger.log('⚠️ Date de rappel déjà passée');
         return null;
       }
 
@@ -248,10 +249,10 @@ class NotificationService {
         },
       });
 
-      console.log(`✅ Rappel planifié pour ${eventTitle} à ${reminderDate.toLocaleString()}`);
+      logger.log(`✅ Rappel planifié pour ${eventTitle} à ${reminderDate.toLocaleString()}`);
       return identifier;
     } catch (error) {
-      console.error('❌ Erreur planification rappel:', error);
+      logger.error('❌ Erreur planification rappel:', error);
       return null;
     }
   }
@@ -262,9 +263,9 @@ class NotificationService {
   async cancelEventReminder(identifier: string) {
     try {
       await Notifications.cancelScheduledNotificationAsync(identifier);
-      console.log('✅ Rappel annulé:', identifier);
+      logger.log('✅ Rappel annulé:', identifier);
     } catch (error) {
-      console.error('❌ Erreur annulation rappel:', error);
+      logger.error('❌ Erreur annulation rappel:', error);
     }
   }
 
@@ -276,7 +277,7 @@ class NotificationService {
       const notifications = await Notifications.getAllScheduledNotificationsAsync();
       return notifications;
     } catch (error) {
-      console.error('❌ Erreur récupération notifications planifiées:', error);
+      logger.error('❌ Erreur récupération notifications planifiées:', error);
       return [];
     }
   }
@@ -316,7 +317,7 @@ class NotificationService {
       const count = await Notifications.getBadgeCountAsync();
       return count;
     } catch (error) {
-      console.error('❌ Erreur récupération badge count:', error);
+      logger.error('❌ Erreur récupération badge count:', error);
       return 0;
     }
   }
@@ -328,7 +329,7 @@ class NotificationService {
     try {
       await Notifications.setBadgeCountAsync(count);
     } catch (error) {
-      console.error('❌ Erreur définition badge count:', error);
+      logger.error('❌ Erreur définition badge count:', error);
     }
   }
 

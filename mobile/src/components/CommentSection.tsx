@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import logger from '../lib/logger';
 import {
   View,
   Text,
@@ -64,7 +65,7 @@ export function CommentSection({ eventId }: CommentSectionProps) {
         loadLikesInBackground(commentsData);
       }
     } catch (err) {
-      console.error('Load comments error:', err);
+      logger.error('Load comments error:', err);
       setLoading(false);
     }
   }
@@ -75,14 +76,14 @@ export function CommentSection({ eventId }: CommentSectionProps) {
       const likesRes = await api.get(`/api/events/${eventId}/comments-likes`);
       const likesByComment = likesRes.data.likes || {};
       
-      console.log('📥 Likes reçus du serveur:', JSON.stringify(likesByComment).substring(0, 200));
+      logger.log('📥 Likes reçus du serveur:', JSON.stringify(likesByComment).substring(0, 200));
       
       setComments(prev => prev.map(comment => {
         const likesData = likesByComment[comment.id];
         const isLiked = likesData?.isLikedByCurrentUser || false;
         
         if (isLiked) {
-          console.log(`❤️  Commentaire ${comment.id} est liké par l'utilisateur`);
+          logger.log(`❤️  Commentaire ${comment.id} est liké par l'utilisateur`);
         }
         
         return {
@@ -92,7 +93,7 @@ export function CommentSection({ eventId }: CommentSectionProps) {
         };
       }));
     } catch (err) {
-      console.error('Load likes error:', err);
+      logger.error('Load likes error:', err);
     }
   }
 
@@ -199,7 +200,7 @@ export function CommentSection({ eventId }: CommentSectionProps) {
           ? { ...c, isLiked: wasLiked, likesCount: originalLikesCount }
           : c
       ));
-      console.error('Like error:', err);
+      logger.error('Like error:', err);
     } finally {
       // Retirer le commentaire de la liste des likes en cours
       setLikingComments(prev => {
