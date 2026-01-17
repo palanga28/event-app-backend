@@ -2,8 +2,9 @@ import React from 'react';
 import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, TouchableOpacity, Linking } from 'react-native';
+import { View, TouchableOpacity, Linking, Platform } from 'react-native';
 import { Home, Search, Ticket, User, Menu } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 import { AmpiaLogo } from '../components/AmpiaLogo';
 import { MobileMenu } from '../components/MobileMenu';
@@ -72,6 +73,10 @@ const Tab = createBottomTabNavigator();
 
 function HomeTabs() {
   const [menuVisible, setMenuVisible] = React.useState(false);
+  const insets = useSafeAreaInsets();
+
+  // Calculer la hauteur de la barre de navigation avec le safe area
+  const tabBarHeight = 60 + Math.max(insets.bottom, 20);
 
   return (
     <>
@@ -112,8 +117,8 @@ function HomeTabs() {
           backgroundColor: colors.background.dark,
           borderTopColor: colors.border.light,
           borderTopWidth: 1,
-          height: 80,
-          paddingBottom: 20,
+          height: tabBarHeight,
+          paddingBottom: Math.max(insets.bottom, 10),
           paddingTop: 10,
         },
         tabBarActiveTintColor: colors.primary.purple,
