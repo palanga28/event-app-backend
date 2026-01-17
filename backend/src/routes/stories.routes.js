@@ -26,7 +26,8 @@ router.get('/visible', authMiddleware, async (req, res) => {
     const stories = await supabaseAPI.select(
       'Stories',
       { expires_at: { gt: now } },
-      { order: 'created_at.desc', limit: req.query.limit || 50 }
+      { order: 'created_at.desc', limit: req.query.limit || 50 },
+      true // use service role
     );
 
     if (stories.length === 0) return res.json([]);
@@ -34,8 +35,8 @@ router.get('/visible', authMiddleware, async (req, res) => {
     const authorIds = Array.from(new Set(stories.map((s) => s.user_id).filter(Boolean)));
 
     // Relations follow dans les deux sens (viewer -> author) ou (author -> viewer)
-    const followsOut = await supabaseAPI.select('Follows', { follower_id: req.user.id });
-    const followsIn = await supabaseAPI.select('Follows', { following_id: req.user.id });
+    const followsOut = await supabaseAPI.select('Follows', { follower_id: req.user.id }, {}, true);
+    const followsIn = await supabaseAPI.select('Follows', { following_id: req.user.id }, {}, true);
 
     const viewerFollows = new Set(followsOut.map((r) => r.following_id));
     const followsViewer = new Set(followsIn.map((r) => r.follower_id));
@@ -47,19 +48,36 @@ router.get('/visible', authMiddleware, async (req, res) => {
 
     const visibleStories = stories.filter((s) => visibleAuthorIds.has(s.user_id));
 
+    // Récupérer les stories vues par l'utilisateur
+    const storyIds = visibleStories.map((s) => s.id);
+    let viewedStoryIds = new Set();
+    if (storyIds.length > 0) {
+      try {
+        const views = await supabaseAPI.select('StoryViews', { 
+          viewer_id: req.user.id,
+          story_id: { in: storyIds }
+        }, {}, true);
+        viewedStoryIds = new Set(views.map((v) => v.story_id));
+      } catch (viewErr) {
+        // Table might not exist yet, ignore
+        console.warn('StoryViews table not available:', viewErr?.message);
+      }
+    }
+
     const userIds = Array.from(new Set(visibleStories.map((s) => s.user_id).filter(Boolean)));
-    const users = userIds.length ? await supabaseAPI.select('Users', { id: { in: userIds } }) : [];
+    const users = userIds.length ? await supabaseAPI.select('Users', { id: { in: userIds } }, {}, true) : [];
     // Filtrer les utilisateurs bannis
     const activeUsers = users.filter((u) => !u.banned);
     const userById = new Map(activeUsers.map((u) => [u.id, u]));
 
-    // Exclure les stories des utilisateurs bannis
+    // Exclure les stories des utilisateurs bannis et ajouter le statut "viewed"
     const withUsers = visibleStories
       .filter((s) => userById.has(s.user_id))
       .map((s) => {
         const u = userById.get(s.user_id);
         return {
           ...s,
+          viewed: viewedStoryIds.has(s.id),
           user: u
             ? { id: u.id, name: u.name, email: u.email, avatar_url: u.avatar_url || null, bio: u.bio || null }
             : null,
@@ -69,6 +87,51 @@ router.get('/visible', authMiddleware, async (req, res) => {
     res.json(withUsers);
   } catch (err) {
     console.error('Erreur récupération stories visibles:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// Marquer une story comme vue
+router.post('/:id/view', authMiddleware, async (req, res) => {
+  const storyId = parseInt(req.params.id, 10);
+  
+  try {
+    if (isNaN(storyId) || storyId <= 0) {
+      return res.status(400).json({ message: 'ID story invalide' });
+    }
+
+    // Vérifier si la story existe
+    const stories = await supabaseAPI.select('Stories', { id: storyId }, {}, true);
+    if (!stories || stories.length === 0) {
+      return res.status(404).json({ message: 'Story non trouvée' });
+    }
+
+    // Vérifier si déjà vue
+    try {
+      const existingViews = await supabaseAPI.select('StoryViews', {
+        story_id: storyId,
+        viewer_id: req.user.id
+      }, {}, true);
+
+      if (existingViews && existingViews.length > 0) {
+        return res.json({ message: 'Déjà vue', alreadyViewed: true });
+      }
+
+      // Enregistrer la vue
+      await supabaseAPI.insert('StoryViews', {
+        story_id: storyId,
+        viewer_id: req.user.id,
+        viewed_at: new Date().toISOString()
+      }, true);
+
+      res.json({ message: 'Story marquée comme vue', viewed: true });
+    } catch (dbErr) {
+      // Table might not exist yet - return success anyway
+      console.warn('StoryViews table error (may not exist):', dbErr?.message);
+      res.json({ message: 'Vue enregistrée (mode dégradé)', viewed: true });
+    }
+  } catch (err) {
+    console.error('Erreur marquage story vue:', err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
 });
@@ -116,7 +179,7 @@ router.post('/', authMiddleware, async (req, res) => {
       caption: caption || null,
       created_at: now.toISOString(),
       expires_at: expiresAt.toISOString(),
-    });
+    }, true);
 
     // Ajouter une entrée d'activité pour les modérateurs
     try {

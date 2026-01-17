@@ -145,6 +145,11 @@ app.get('/', (req, res) => {
   });
 });
 
+// Health check endpoint for Railway/production
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // Error handling (must be last)
 app.use(errorHandler);
 
@@ -161,7 +166,6 @@ app.listen(PORT, '0.0.0.0', () => {
   log.info(`🚀 Server running on port ${PORT}`);
   log.info(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 API: http://localhost:${PORT}`);
-  console.log(`📱 Mobile API: http://192.168.46.225:${PORT}`);
 });
 
 module.exports = app;

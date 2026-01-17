@@ -12,13 +12,15 @@ const fileFilter = (req, file, cb) => {
     'image/jpg',
     'image/png',
     'image/webp',
-    'image/gif'
+    'image/gif',
+    'image/heic',
+    'image/heif'
   ];
 
   if (allowedMimeTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error(`Type de fichier non autorisé: ${file.mimetype}. Types acceptés: JPEG, PNG, WebP, GIF`), false);
+    cb(new Error(`Type de fichier non autorisé: ${file.mimetype}. Types acceptés: JPEG, PNG, WebP, GIF, HEIC, HEIF`), false);
   }
 };
 
@@ -75,7 +77,8 @@ router.post('/event-images', authMiddleware, upload.array('files'), async (req, 
       });
 
       if (uploadError) {
-        return res.status(400).json({ message: uploadError.message });
+        console.error('❌ Erreur upload Supabase:', uploadError);
+        return res.status(400).json({ message: uploadError.message, details: uploadError });
       }
 
       const { data } = supabase.storage.from(bucket).getPublicUrl(path);

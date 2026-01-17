@@ -22,6 +22,7 @@ import ModeratorActivityPage from '../pages/moderator/ModeratorActivityPage'
 import ModeratorUsersReportedPage from '../pages/moderator/ModeratorUsersReportedPage'
 import ModeratorWarnUserPage from '../pages/moderator/ModeratorWarnUserPage'
 import ModeratorChallengesPage from '../pages/moderator/ModeratorChallengesPage'
+import AdminDashboardPage from '../pages/admin/AdminDashboardPage'
 import AdminStatsPage from '../pages/admin/AdminStatsPage'
 import AdminEventsPage from '../pages/admin/AdminEventsPage'
 import AdminReportsPage from '../pages/admin/AdminReportsPage'
@@ -29,6 +30,8 @@ import AdminLogsPage from '../pages/admin/AdminLogsPage'
 import AdminChallengesPage from '../pages/admin/AdminChallengesPage'
 import AdminUsersPage from '../pages/admin/AdminUsersPage'
 import AdminSettingsPage from '../pages/admin/AdminSettingsPage'
+import AdminPaymentsPage from '../pages/admin/AdminPaymentsPage'
+import AdminTicketsPage from '../pages/admin/AdminTicketsPage'
 import RequireAuth from './RequireAuth'
 import RequireRole from './RequireRole'
 
@@ -140,12 +143,24 @@ export default function AppRouter() {
                   element: <RequireRole roles={['admin']} />,
                   children: [
                     {
+                      path: 'admin/dashboard',
+                      element: <AdminDashboardPage />,
+                    },
+                    {
                       path: 'admin/stats',
                       element: <AdminStatsPage />,
                     },
                     {
                       path: 'admin/events',
                       element: <AdminEventsPage />,
+                    },
+                    {
+                      path: 'admin/payments',
+                      element: <AdminPaymentsPage />,
+                    },
+                    {
+                      path: 'admin/tickets',
+                      element: <AdminTicketsPage />,
                     },
                     {
                       path: 'admin/reports',

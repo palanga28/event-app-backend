@@ -8,6 +8,65 @@ const QRCodeService = require('../services/qrcode.service');
 console.log('✅ payment.routes chargé');
 
 // =========================
+// MODE TEST - Désactiver pour utiliser WonyaSoft en production
+// =========================
+const TEST_MODE = true; // Mettre à false pour activer WonyaSoft
+
+// =========================
+// CONFIGURATION DES COMMISSIONS
+// =========================
+const COMMISSION_CONFIG = {
+  OPERATOR_PERCENT: 2,    // 2% pour l'opérateur Mobile Money (WonyaSoft)
+  AMPIA_PERCENT: 4,       // 4% pour AMPIA
+  TOTAL_PERCENT: 6,       // Total: 6%
+  // Mode de facturation: 'buyer' = l'acheteur paie les frais, 'organizer' = l'organisateur paie
+  FEE_MODE: 'buyer',
+};
+
+/**
+ * Calcule les frais et montants pour une transaction
+ * @param {number} basePrice - Prix de base du billet
+ * @param {number} quantity - Quantité de billets
+ * @returns {Object} Détails des montants
+ */
+function calculateFees(basePrice, quantity) {
+  const subtotal = basePrice * quantity;
+  
+  if (COMMISSION_CONFIG.FEE_MODE === 'buyer') {
+    // L'acheteur paie les frais en plus du prix du billet
+    const operatorFee = Math.ceil(subtotal * COMMISSION_CONFIG.OPERATOR_PERCENT / 100);
+    const ampiaFee = Math.ceil(subtotal * COMMISSION_CONFIG.AMPIA_PERCENT / 100);
+    const totalFees = operatorFee + ampiaFee;
+    const totalAmount = subtotal + totalFees;
+    
+    return {
+      subtotal,           // Prix des billets
+      operatorFee,        // Frais opérateur (2%)
+      ampiaFee,           // Frais AMPIA (4%)
+      totalFees,          // Total des frais
+      totalAmount,        // Montant total à payer par l'acheteur
+      organizerReceives: subtotal,  // Ce que l'organisateur reçoit
+      feeMode: 'buyer',
+    };
+  } else {
+    // L'organisateur paie les frais (prélevés sur le prix du billet)
+    const operatorFee = Math.ceil(subtotal * COMMISSION_CONFIG.OPERATOR_PERCENT / 100);
+    const ampiaFee = Math.ceil(subtotal * COMMISSION_CONFIG.AMPIA_PERCENT / 100);
+    const totalFees = operatorFee + ampiaFee;
+    
+    return {
+      subtotal,
+      operatorFee,
+      ampiaFee,
+      totalFees,
+      totalAmount: subtotal,  // L'acheteur paie le prix affiché
+      organizerReceives: subtotal - totalFees,  // Organisateur reçoit moins
+      feeMode: 'organizer',
+    };
+  }
+}
+
+// =========================
 // INITIER UN PAIEMENT POUR UN TICKET
 // =========================
 router.post('/initiate', authMiddleware, async (req, res) => {
@@ -27,7 +86,8 @@ router.post('/initiate', authMiddleware, async (req, res) => {
       return res.status(400).json({ message: 'La quantité doit être entre 1 et 10' });
     }
 
-    if (!mobileNumber || !/^0[0-9]{9}$/.test(mobileNumber)) {
+    // En mode test, le numéro mobile n'est pas obligatoire
+    if (!TEST_MODE && (!mobileNumber || !/^0[0-9]{9}$/.test(mobileNumber))) {
       return res.status(400).json({ message: 'Numéro Mobile Money invalide (format: 0XXXXXXXXX)' });
     }
 
@@ -56,12 +116,68 @@ router.post('/initiate', authMiddleware, async (req, res) => {
       return res.status(404).json({ message: 'Événement non trouvé' });
     }
 
-    // Calculer le montant total
-    const totalAmount = ticketType.price * quantityNum;
+    // Calculer les frais et montants
+    const feeDetails = calculateFees(ticketType.price, quantityNum);
+    const totalAmount = feeDetails.totalAmount;
 
     // Générer la référence de transaction
     const transactionRef = WonyaSoftService.generateTransactionRef();
 
+    // MODE TEST: Créer directement le ticket sans paiement réel
+    if (TEST_MODE) {
+      console.log('🧪 MODE TEST: Création de ticket sans paiement WonyaSoft');
+      console.log('💰 Détails frais:', feeDetails);
+      
+      // Créer l'enregistrement de paiement comme "completed"
+      const payment = await supabaseAPI.insert('Payments', {
+        user_id: user.id,
+        event_id: ticketType.event_id,
+        ticket_type_id: ticketTypeIdNum,
+        quantity: quantityNum,
+        amount: totalAmount,
+        subtotal: feeDetails.subtotal,
+        operator_fee: feeDetails.operatorFee,
+        ampia_fee: feeDetails.ampiaFee,
+        total_fees: feeDetails.totalFees,
+        organizer_receives: feeDetails.organizerReceives,
+        fee_mode: feeDetails.feeMode,
+        currency: selectedCurrency,
+        mobile_number: mobileNumber || '0000000000',
+        transaction_ref: transactionRef,
+        status: 'completed',
+        provider: 'test_mode',
+        created_at: new Date().toISOString(),
+      });
+
+      // Créer le ticket directement (passer l'objet payment complet)
+      const ticket = await createTicketFromPayment(payment);
+
+      return res.status(201).json({
+        message: '🧪 MODE TEST: Ticket créé avec succès (sans paiement réel)',
+        payment: {
+          id: payment.id,
+          transactionRef,
+          amount: totalAmount,
+          currency: selectedCurrency,
+          status: 'completed',
+          ticketType: ticketType.name,
+          event: event.title,
+          quantity: quantityNum,
+        },
+        fees: {
+          subtotal: feeDetails.subtotal,
+          operatorFee: feeDetails.operatorFee,
+          ampiaFee: feeDetails.ampiaFee,
+          totalFees: feeDetails.totalFees,
+          totalAmount: feeDetails.totalAmount,
+          organizerReceives: feeDetails.organizerReceives,
+          feeMode: feeDetails.feeMode,
+        },
+        ticket: ticket,
+      });
+    }
+
+    // MODE PRODUCTION: Utiliser WonyaSoft
     // Créer l'enregistrement de paiement en attente
     const payment = await supabaseAPI.insert('Payments', {
       user_id: user.id,
@@ -69,6 +185,12 @@ router.post('/initiate', authMiddleware, async (req, res) => {
       ticket_type_id: ticketTypeIdNum,
       quantity: quantityNum,
       amount: totalAmount,
+      subtotal: feeDetails.subtotal,
+      operator_fee: feeDetails.operatorFee,
+      ampia_fee: feeDetails.ampiaFee,
+      total_fees: feeDetails.totalFees,
+      organizer_receives: feeDetails.organizerReceives,
+      fee_mode: feeDetails.feeMode,
       currency: selectedCurrency,
       mobile_number: mobileNumber,
       transaction_ref: transactionRef,
@@ -275,6 +397,102 @@ router.post('/webhook/wonyasoft', async (req, res) => {
 });
 
 // =========================
+// CALCULER LES FRAIS (endpoint public pour affichage)
+// =========================
+router.post('/calculate-fees', async (req, res) => {
+  const { price, quantity } = req.body;
+  
+  try {
+    const priceNum = parseFloat(price) || 0;
+    const quantityNum = parseInt(quantity) || 1;
+    
+    if (priceNum <= 0) {
+      return res.status(400).json({ message: 'Prix invalide' });
+    }
+    
+    const feeDetails = calculateFees(priceNum, quantityNum);
+    
+    res.json({
+      ...feeDetails,
+      breakdown: {
+        ticketPrice: priceNum,
+        quantity: quantityNum,
+        operatorPercent: COMMISSION_CONFIG.OPERATOR_PERCENT,
+        ampiaPercent: COMMISSION_CONFIG.AMPIA_PERCENT,
+        totalPercent: COMMISSION_CONFIG.TOTAL_PERCENT,
+      },
+    });
+  } catch (err) {
+    console.error('❌ Erreur calcul frais:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// =========================
+// STATISTIQUES DES COMMISSIONS (Admin)
+// =========================
+router.get('/commission-stats', authMiddleware, async (req, res) => {
+  try {
+    // Vérifier si l'utilisateur est admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Accès réservé aux administrateurs' });
+    }
+    
+    // Récupérer tous les paiements complétés
+    const payments = await supabaseAPI.select('Payments', { status: 'completed' }, {}, true);
+    
+    // Calculer les totaux
+    const stats = {
+      totalTransactions: payments.length,
+      totalAmount: 0,
+      totalSubtotal: 0,
+      totalOperatorFees: 0,
+      totalAmpiaFees: 0,
+      totalFees: 0,
+      totalOrganizerReceives: 0,
+      byCurrency: {},
+    };
+    
+    payments.forEach(p => {
+      const currency = p.currency || 'CDF';
+      
+      if (!stats.byCurrency[currency]) {
+        stats.byCurrency[currency] = {
+          transactions: 0,
+          amount: 0,
+          subtotal: 0,
+          operatorFees: 0,
+          ampiaFees: 0,
+          fees: 0,
+          organizerReceives: 0,
+        };
+      }
+      
+      stats.byCurrency[currency].transactions++;
+      stats.byCurrency[currency].amount += p.amount || 0;
+      stats.byCurrency[currency].subtotal += p.subtotal || 0;
+      stats.byCurrency[currency].operatorFees += p.operator_fee || 0;
+      stats.byCurrency[currency].ampiaFees += p.ampia_fee || 0;
+      stats.byCurrency[currency].fees += p.total_fees || 0;
+      stats.byCurrency[currency].organizerReceives += p.organizer_receives || 0;
+      
+      stats.totalTransactions++;
+      stats.totalAmount += p.amount || 0;
+      stats.totalSubtotal += p.subtotal || 0;
+      stats.totalOperatorFees += p.operator_fee || 0;
+      stats.totalAmpiaFees += p.ampia_fee || 0;
+      stats.totalFees += p.total_fees || 0;
+      stats.totalOrganizerReceives += p.organizer_receives || 0;
+    });
+    
+    res.json(stats);
+  } catch (err) {
+    console.error('❌ Erreur stats commissions:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// =========================
 // HISTORIQUE DES PAIEMENTS UTILISATEUR
 // =========================
 router.get('/history', authMiddleware, async (req, res) => {
@@ -313,6 +531,8 @@ router.get('/history', authMiddleware, async (req, res) => {
 // FONCTION UTILITAIRE: CRÉER TICKET APRÈS PAIEMENT
 // =========================
 async function createTicketFromPayment(payment) {
+  console.log('🎫 createTicketFromPayment appelé avec:', JSON.stringify(payment, null, 2));
+  
   // Récupérer le type de ticket
   const ticketTypes = await supabaseAPI.select('TicketTypes', { id: payment.ticket_type_id });
   const ticketType = ticketTypes[0];
@@ -326,7 +546,9 @@ async function createTicketFromPayment(payment) {
     throw new Error('Places insuffisantes');
   }
 
-  // Créer le ticket avec QR code
+  console.log('🎫 Création du ticket pour user_id:', payment.user_id, 'event_id:', payment.event_id);
+
+  // Créer le ticket
   const ticket = await supabaseAPI.insert('Tickets', {
     user_id: payment.user_id,
     event_id: payment.event_id,
@@ -338,27 +560,38 @@ async function createTicketFromPayment(payment) {
     quantity: payment.quantity,
   });
 
+  console.log('🎫 Ticket créé:', ticket.id);
+
   // Générer le QR code pour le ticket
-  const { code, qrCode } = await QRCodeService.generateTicketQRCode(
-    ticket.id,
-    payment.user_id,
-    payment.event_id
-  );
+  try {
+    const { code, qrCode } = await QRCodeService.generateTicketQRCode(
+      ticket.id,
+      payment.user_id,
+      payment.event_id
+    );
 
-  // Mettre à jour le ticket avec le QR code
-  await supabaseAPI.update('Tickets', {
-    qr_code: code,
-    qr_code_image: qrCode,
-  }, { id: ticket.id });
+    console.log('🎫 QR code généré:', code, 'Image length:', qrCode?.length || 0);
 
-  ticket.qr_code = code;
-  ticket.qr_code_image = qrCode;
+    // Mettre à jour le ticket avec le QR code
+    await supabaseAPI.update('Tickets', {
+      qr_code: code,
+      qr_code_image: qrCode,
+    }, { id: ticket.id });
+
+    ticket.qr_code = code;
+    ticket.qr_code_image = qrCode;
+    
+    console.log('🎫 Ticket mis à jour avec QR code');
+  } catch (qrErr) {
+    console.error('❌ Erreur génération QR code:', qrErr);
+  }
 
   // Mettre à jour la quantité disponible
   await supabaseAPI.update('TicketTypes', {
     available_quantity: ticketType.available_quantity - payment.quantity,
   }, { id: payment.ticket_type_id });
 
+  console.log('🎫 Ticket final:', JSON.stringify(ticket, null, 2));
   return ticket;
 }
 

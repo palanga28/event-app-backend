@@ -336,6 +336,13 @@ export default function Navbar() {
                     <DropdownMenuLabel className="text-red-300">Administration</DropdownMenuLabel>
                     <DropdownMenuSeparator className="bg-white/10" />
                     <DropdownMenuItem 
+                      onSelect={() => navigate('/admin/dashboard')} 
+                      className="gap-3 text-white hover:bg-white/10 cursor-pointer"
+                    >
+                      <BarChart3 className="h-4 w-4 text-purple-400" />
+                      Tableau de bord
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
                       onSelect={() => navigate('/admin/stats')} 
                       className="gap-3 text-white hover:bg-white/10 cursor-pointer"
                     >
@@ -720,6 +727,20 @@ export default function Navbar() {
                   {isAdmin && (
                     <div className="space-y-1">
                       <div className="text-xs font-medium text-red-400/80 uppercase tracking-wider mb-2">Administration</div>
+                      <NavLink
+                        to="/admin/dashboard"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={({ isActive }) =>
+                          `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 ${isActive
+                            ? 'bg-red-500/20 text-red-200'
+                            : 'text-white/70 hover:text-white hover:bg-red-500/10'
+                          }`
+                        }
+                      >
+                        <BarChart3 className="h-5 w-5 text-purple-400" />
+                        Tableau de bord
+                        <ChevronRight className="h-4 w-4 ml-auto text-white/40" />
+                      </NavLink>
                       <NavLink
                         to="/admin/stats"
                         onClick={() => setMobileMenuOpen(false)}

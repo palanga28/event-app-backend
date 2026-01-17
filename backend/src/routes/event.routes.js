@@ -280,6 +280,28 @@ router.post('/', authMiddleware, async (req, res) => {
       console.warn('Warn: parsing tags/mentions failed on event create', e?.message || e);
     }
 
+    // Générer un QR code pour l'organisateur
+    try {
+      const QRCodeService = require('../services/qrcode.service');
+      const { code, qrCode } = await QRCodeService.generateTicketQRCode(
+        event.id, // Utiliser l'ID de l'événement comme ID de ticket
+        user.id,
+        event.id
+      );
+      
+      // Stocker le QR code de l'organisateur dans l'événement
+      await supabaseAPI.update('Events', event.id, {
+        organizer_qr_code: code,
+        organizer_qr_code_image: qrCode,
+        updated_at: new Date().toISOString()
+      });
+      
+      event.organizer_qr_code = code;
+      event.organizer_qr_code_image = qrCode;
+    } catch (qrErr) {
+      console.warn('Warn: failed to generate organizer QR code:', qrErr?.message || qrErr);
+    }
+
     res.status(201).json({ message: 'Événement créé', event });
   } catch (err) {
     console.error('Erreur création événement:', err);
@@ -343,6 +365,64 @@ router.get('/', async (req, res) => {
     res.json(eventsWithOrganizers);
   } catch (err) {
     console.error('Erreur récupération événements:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// =========================
+// GÉNÉRER QR CODE ORGANISATEUR (pour événements existants)
+// =========================
+router.post('/:id/generate-organizer-qr', authMiddleware, async (req, res) => {
+  const user = req.user;
+  const eventId = parseInt(req.params.id, 10);
+
+  try {
+    if (!Number.isFinite(eventId)) {
+      return res.status(400).json({ message: 'ID événement invalide' });
+    }
+
+    const rows = await supabaseAPI.select('Events', { id: eventId });
+    const event = rows[0];
+
+    if (!event) {
+      return res.status(404).json({ message: 'Événement introuvable' });
+    }
+
+    if (event.organizer_id !== user.id && user.role !== 'admin') {
+      return res.status(403).json({ message: 'Accès interdit' });
+    }
+
+    // Vérifier si le QR code existe déjà
+    if (event.organizer_qr_code && event.organizer_qr_code_image) {
+      return res.json({
+        message: 'QR code déjà existant',
+        organizer_qr_code: event.organizer_qr_code,
+        organizer_qr_code_image: event.organizer_qr_code_image
+      });
+    }
+
+    // Générer le QR code
+    const QRCodeService = require('../services/qrcode.service');
+    const { code, qrCode } = await QRCodeService.generateTicketQRCode(
+      eventId,
+      event.organizer_id,
+      eventId
+    );
+
+    // Mettre à jour l'événement
+    await supabaseAPI.update('Events', eventId, {
+      organizer_qr_code: code,
+      organizer_qr_code_image: qrCode,
+      updated_at: new Date().toISOString()
+    });
+
+    res.json({
+      message: 'QR code organisateur généré',
+      organizer_qr_code: code,
+      organizer_qr_code_image: qrCode
+    });
+  } catch (err) {
+    console.error('Erreur génération QR code organisateur:', err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
 });

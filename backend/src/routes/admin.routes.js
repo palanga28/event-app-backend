@@ -1073,4 +1073,78 @@ router.put('/users/:id/reset-password', authMiddleware, adminMiddleware, async (
   }
 });
 
+// =========================
+// GESTION DES PAIEMENTS (ADMIN)
+// =========================
+router.get('/payments', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const payments = await supabaseAPI.select('Payments', {}, { order: 'created_at.desc', limit: 500 });
+
+    // Récupérer les IDs uniques
+    const userIds = [...new Set(payments.map(p => p.user_id).filter(Boolean))];
+    const eventIds = [...new Set(payments.map(p => p.event_id).filter(Boolean))];
+    const ticketTypeIds = [...new Set(payments.map(p => p.ticket_type_id).filter(Boolean))];
+
+    // Récupérer les données associées
+    const [users, events, ticketTypes] = await Promise.all([
+      userIds.length ? supabaseAPI.select('Users', { id: { in: userIds } }) : [],
+      eventIds.length ? supabaseAPI.select('Events', { id: { in: eventIds } }) : [],
+      ticketTypeIds.length ? supabaseAPI.select('TicketTypes', { id: { in: ticketTypeIds } }) : []
+    ]);
+
+    const userById = new Map(users.map(u => [u.id, { id: u.id, name: u.name, email: u.email }]));
+    const eventById = new Map(events.map(e => [e.id, { id: e.id, title: e.title }]));
+    const ticketTypeById = new Map(ticketTypes.map(t => [t.id, { id: t.id, name: t.name, price: t.price }]));
+
+    const paymentsWithDetails = payments.map(payment => ({
+      ...payment,
+      user: userById.get(payment.user_id) || null,
+      event: eventById.get(payment.event_id) || null,
+      ticket_type: ticketTypeById.get(payment.ticket_type_id) || null
+    }));
+
+    res.json(paymentsWithDetails);
+  } catch (err) {
+    console.error('Erreur récupération paiements:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// =========================
+// GESTION DES TICKETS (ADMIN)
+// =========================
+router.get('/tickets', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const tickets = await supabaseAPI.select('Tickets', {}, { order: 'created_at.desc', limit: 500 });
+
+    // Récupérer les IDs uniques
+    const userIds = [...new Set(tickets.map(t => t.user_id).filter(Boolean))];
+    const eventIds = [...new Set(tickets.map(t => t.event_id).filter(Boolean))];
+    const ticketTypeIds = [...new Set(tickets.map(t => t.ticket_type_id).filter(Boolean))];
+
+    // Récupérer les données associées
+    const [users, events, ticketTypes] = await Promise.all([
+      userIds.length ? supabaseAPI.select('Users', { id: { in: userIds } }) : [],
+      eventIds.length ? supabaseAPI.select('Events', { id: { in: eventIds } }) : [],
+      ticketTypeIds.length ? supabaseAPI.select('TicketTypes', { id: { in: ticketTypeIds } }) : []
+    ]);
+
+    const userById = new Map(users.map(u => [u.id, { id: u.id, name: u.name, email: u.email }]));
+    const eventById = new Map(events.map(e => [e.id, { id: e.id, title: e.title, date: e.date, location: e.location }]));
+    const ticketTypeById = new Map(ticketTypes.map(t => [t.id, { id: t.id, name: t.name, price: t.price }]));
+
+    const ticketsWithDetails = tickets.map(ticket => ({
+      ...ticket,
+      user: userById.get(ticket.user_id) || null,
+      event: eventById.get(ticket.event_id) || null,
+      ticket_type: ticketTypeById.get(ticket.ticket_type_id) || null
+    }));
+
+    res.json(ticketsWithDetails);
+  } catch (err) {
+    console.error('Erreur récupération tickets:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
 module.exports = router;
