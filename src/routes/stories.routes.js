@@ -26,7 +26,8 @@ router.get('/visible', authMiddleware, async (req, res) => {
     const stories = await supabaseAPI.select(
       'Stories',
       { expires_at: { gt: now } },
-      { order: 'created_at.desc', limit: req.query.limit || 50 }
+      { order: 'created_at.desc', limit: req.query.limit || 50 },
+      true // use service role
     );
 
     if (stories.length === 0) return res.json([]);
@@ -34,8 +35,8 @@ router.get('/visible', authMiddleware, async (req, res) => {
     const authorIds = Array.from(new Set(stories.map((s) => s.user_id).filter(Boolean)));
 
     // Relations follow dans les deux sens (viewer -> author) ou (author -> viewer)
-    const followsOut = await supabaseAPI.select('Follows', { follower_id: req.user.id });
-    const followsIn = await supabaseAPI.select('Follows', { following_id: req.user.id });
+    const followsOut = await supabaseAPI.select('Follows', { follower_id: req.user.id }, {}, true);
+    const followsIn = await supabaseAPI.select('Follows', { following_id: req.user.id }, {}, true);
 
     const viewerFollows = new Set(followsOut.map((r) => r.following_id));
     const followsViewer = new Set(followsIn.map((r) => r.follower_id));
@@ -48,7 +49,7 @@ router.get('/visible', authMiddleware, async (req, res) => {
     const visibleStories = stories.filter((s) => visibleAuthorIds.has(s.user_id));
 
     const userIds = Array.from(new Set(visibleStories.map((s) => s.user_id).filter(Boolean)));
-    const users = userIds.length ? await supabaseAPI.select('Users', { id: { in: userIds } }) : [];
+    const users = userIds.length ? await supabaseAPI.select('Users', { id: { in: userIds } }, {}, true) : [];
     // Filtrer les utilisateurs bannis
     const activeUsers = users.filter((u) => !u.banned);
     const userById = new Map(activeUsers.map((u) => [u.id, u]));
