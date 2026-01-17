@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,23 +8,22 @@ import {
   ActivityIndicator,
   Vibration,
 } from 'react-native';
-import { BarCodeScanner } from 'expo-barcode-scanner';
-import { Ionicons } from '@expo/vector-icons';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { Camera } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { api } from '../lib/api';
 
 export default function QRScannerScreen() {
   const navigation = useNavigation();
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [validating, setValidating] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      const { status } = await BarCodeScanner.requestPermissionsAsync();
-      setHasPermission(status === 'granted');
-    })();
-  }, []);
+    if (!permission?.granted) {
+      requestPermission();
+    }
+  }, [permission]);
 
   const handleBarCodeScanned = async ({ type, data }: { type: string; data: string }) => {
     if (scanned || validating) return;
@@ -104,7 +103,7 @@ export default function QRScannerScreen() {
     }
   };
 
-  if (hasPermission === null) {
+  if (!permission) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#6366f1" />
@@ -113,16 +112,22 @@ export default function QRScannerScreen() {
     );
   }
 
-  if (hasPermission === false) {
+  if (!permission.granted) {
     return (
       <View style={styles.container}>
-        <Ionicons name="camera-off" size={64} color="#ef4444" />
+        <Camera size={64} color="#ef4444" />
         <Text style={styles.errorText}>Accès à la caméra refusé</Text>
         <Text style={styles.errorSubtext}>
           Veuillez autoriser l'accès à la caméra dans les paramètres
         </Text>
         <TouchableOpacity
           style={styles.backButton}
+          onPress={() => requestPermission()}
+        >
+          <Text style={styles.backButtonText}>Autoriser</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.backButton, { marginTop: 12, backgroundColor: '#374151' }]}
           onPress={() => navigation.goBack()}
         >
           <Text style={styles.backButtonText}>Retour</Text>
@@ -138,14 +143,18 @@ export default function QRScannerScreen() {
           style={styles.closeButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="close" size={28} color="#fff" />
+          <Text style={{ fontSize: 24, color: '#fff' }}>✕</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Scanner un ticket</Text>
       </View>
 
-      <BarCodeScanner
-        onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
+      <CameraView
         style={StyleSheet.absoluteFillObject}
+        facing="back"
+        barcodeScannerSettings={{
+          barcodeTypes: ['qr'],
+        }}
+        onBarcodeScanned={scanned ? undefined : (result) => handleBarCodeScanned({ type: 'qr', data: result.data })}
       />
 
       <View style={styles.overlay}>
@@ -158,7 +167,7 @@ export default function QRScannerScreen() {
       </View>
 
       <View style={styles.instructions}>
-        <Ionicons name="qr-code-outline" size={48} color="#fff" />
+        <Camera size={48} color="#fff" />
         <Text style={styles.instructionsText}>
           {validating
             ? 'Validation en cours...'
@@ -174,7 +183,7 @@ export default function QRScannerScreen() {
           style={styles.rescanButton}
           onPress={() => setScanned(false)}
         >
-          <Ionicons name="refresh" size={24} color="#fff" />
+          <Text style={{ fontSize: 18, color: '#fff' }}>↻</Text>
           <Text style={styles.rescanButtonText}>Scanner à nouveau</Text>
         </TouchableOpacity>
       )}

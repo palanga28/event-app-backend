@@ -53,7 +53,12 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-barcode-scanner",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Autoriser $(PRODUCT_NAME) à accéder à la caméra pour scanner les QR codes"
+        }
+      ],
       "@react-native-community/datetimepicker"
     ],
     "extra": {
