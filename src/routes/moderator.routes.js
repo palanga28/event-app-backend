@@ -168,7 +168,22 @@ router.put('/reports/:id/resolve', authMiddleware, moderatorMiddleware, async (r
       const targetUsers = await supabaseAPI.select('Users', { id: targetUserId });
       const targetUser = targetUsers[0];
       
-      if (targetUser && targetUser.role !== 'admin') {
+      // Protection: Un modérateur ne peut pas bannir un admin
+      if (targetUser && targetUser.role === 'admin') {
+        return res.status(403).json({ message: 'Un modérateur ne peut pas bannir un administrateur' });
+      }
+      
+      // Protection: Un modérateur ne peut pas bannir un autre modérateur
+      if (targetUser && targetUser.role === 'moderator') {
+        return res.status(403).json({ message: 'Un modérateur ne peut pas bannir un autre modérateur' });
+      }
+      
+      // Protection: Un modérateur ne peut pas se bannir lui-même
+      if (targetUserId === req.user.id) {
+        return res.status(403).json({ message: 'Vous ne pouvez pas vous bannir vous-même' });
+      }
+      
+      if (targetUser) {
         await supabaseAPI.update(
           'Users',
           {
@@ -278,9 +293,27 @@ router.put('/users/:id/warn', authMiddleware, moderatorMiddleware, async (req, r
       return res.status(400).json({ message: 'ID utilisateur invalide' });
     }
 
-    // Ne pas avertir l'administrateur
-    if (userId === 1) {
-      return res.status(400).json({ message: 'Impossible d\'avertir l\'administrateur' });
+    // Protection: Un modérateur ne peut pas s'avertir lui-même
+    if (userId === req.user.id) {
+      return res.status(403).json({ message: 'Vous ne pouvez pas vous avertir vous-même' });
+    }
+
+    // Vérifier le rôle de l'utilisateur cible
+    const targetUsers = await supabaseAPI.select('Users', { id: userId });
+    const targetUser = targetUsers[0];
+    
+    if (!targetUser) {
+      return res.status(404).json({ message: 'Utilisateur non trouvé' });
+    }
+    
+    // Protection: Un modérateur ne peut pas avertir un admin
+    if (targetUser.role === 'admin') {
+      return res.status(403).json({ message: 'Un modérateur ne peut pas avertir un administrateur' });
+    }
+    
+    // Protection: Un modérateur ne peut pas avertir un autre modérateur
+    if (targetUser.role === 'moderator') {
+      return res.status(403).json({ message: 'Un modérateur ne peut pas avertir un autre modérateur' });
     }
 
     if (message !== undefined && message !== null) {
@@ -290,12 +323,6 @@ router.put('/users/:id/warn', authMiddleware, moderatorMiddleware, async (req, r
       if (message.length > 1000) {
         return res.status(400).json({ message: 'Message trop long (max 1000 caractères)' });
       }
-    }
-
-    const users = await supabaseAPI.select('Users', { id: userId });
-    const user = users[0];
-    if (!user) {
-      return res.status(404).json({ message: 'Utilisateur non trouvé' });
     }
 
     const report = await supabaseAPI.insert('Reports', {
