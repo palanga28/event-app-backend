@@ -3,7 +3,7 @@ const router = express.Router();
 const { supabaseAPI } = require('../config/api');
 const authMiddleware = require('../middlewares/auth.middleware');
 
-console.log('✅ organizer.routes chargé');
+console.log('✅ organizer.routes chargé v2');
 
 // =========================
 // OBTENIR LE SOLDE DE L'ORGANISATEUR
