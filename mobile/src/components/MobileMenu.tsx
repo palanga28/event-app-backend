@@ -282,6 +282,15 @@ export function MobileMenu({ visible, onClose }: MobileMenuProps) {
                   <Text style={styles.menuItemText}>Événements</Text>
                   <ChevronRight size={16} color={colors.text.muted} style={styles.chevron} />
                 </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={() => handleNavigate('AdminPayouts')}
+                >
+                  <Wallet size={20} color="#10b981" />
+                  <Text style={styles.menuItemText}>Demandes de retrait</Text>
+                  <ChevronRight size={16} color={colors.text.muted} style={styles.chevron} />
+                </TouchableOpacity>
               </View>
             )}
 
