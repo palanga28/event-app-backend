@@ -27,7 +27,14 @@ const eventLikesRoutes = require('./routes/event-likes.routes');
 const notificationsRoutes = require('./routes/notifications.routes');
 const meRoutes = require('./routes/me.routes');
 const paymentRoutes = require('./routes/payment.routes');
-const organizerRoutes = require('./routes/organizer.routes');
+let organizerRoutes;
+try {
+  organizerRoutes = require('./routes/organizer.routes');
+  console.log('✅ organizer.routes importé avec succès');
+} catch (err) {
+  console.error('❌ Erreur import organizer.routes:', err.message);
+  organizerRoutes = require('express').Router();
+}
 const errorHandler = require('./middlewares/errorHandler.middleware');
 
 const app = express();
