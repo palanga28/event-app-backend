@@ -1147,4 +1147,204 @@ router.get('/tickets', authMiddleware, adminMiddleware, async (req, res) => {
   }
 });
 
+// =========================
+// GESTION DES DEMANDES DE RETRAIT (ADMIN)
+// =========================
+
+// Liste des demandes de retrait
+router.get('/payout-requests', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { status } = req.query;
+    
+    let payouts;
+    if (status) {
+      payouts = await supabaseAPI.select('OrganizerPayouts', { status });
+    } else {
+      payouts = await supabaseAPI.select('OrganizerPayouts', {});
+    }
+
+    // Récupérer les infos des organisateurs
+    const organizerIds = [...new Set(payouts.map(p => p.organizer_id).filter(Boolean))];
+    const organizers = organizerIds.length 
+      ? await supabaseAPI.select('Users', { id: { in: organizerIds } })
+      : [];
+    
+    const organizerById = new Map(organizers.map(u => [u.id, { 
+      id: u.id, 
+      name: u.name, 
+      email: u.email,
+      phone: u.phone 
+    }]));
+
+    // Enrichir les demandes avec les infos organisateur
+    const payoutsWithDetails = payouts.map(payout => ({
+      ...payout,
+      organizer: organizerById.get(payout.organizer_id) || null,
+    }));
+
+    // Trier par date décroissante
+    payoutsWithDetails.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    res.json(payoutsWithDetails);
+  } catch (err) {
+    console.error('❌ Erreur get payout requests:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// Statistiques des retraits
+router.get('/payout-stats', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const payouts = await supabaseAPI.select('OrganizerPayouts', {});
+
+    const stats = {
+      pending: { count: 0, amount: 0 },
+      processing: { count: 0, amount: 0 },
+      completed: { count: 0, amount: 0 },
+      rejected: { count: 0, amount: 0 },
+      total: { count: 0, amount: 0 },
+    };
+
+    payouts.forEach(p => {
+      const amount = parseFloat(p.amount) || 0;
+      stats.total.count++;
+      stats.total.amount += amount;
+
+      if (stats[p.status]) {
+        stats[p.status].count++;
+        stats[p.status].amount += amount;
+      }
+    });
+
+    res.json(stats);
+  } catch (err) {
+    console.error('❌ Erreur payout stats:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// Traiter une demande de retrait (approuver/rejeter)
+router.post('/payout/:id/process', authMiddleware, adminMiddleware, async (req, res) => {
+  const { id } = req.params;
+  const { action, transaction_ref, admin_notes } = req.body;
+  const admin = req.user;
+
+  try {
+    const payouts = await supabaseAPI.select('OrganizerPayouts', { id: parseInt(id) });
+    const payout = payouts[0];
+
+    if (!payout) {
+      return res.status(404).json({ message: 'Demande non trouvée' });
+    }
+
+    if (payout.status !== 'pending' && payout.status !== 'processing') {
+      return res.status(400).json({ message: 'Cette demande a déjà été traitée' });
+    }
+
+    let newStatus;
+    if (action === 'approve' || action === 'complete') {
+      newStatus = 'completed';
+    } else if (action === 'reject') {
+      newStatus = 'rejected';
+    } else if (action === 'processing') {
+      newStatus = 'processing';
+    } else {
+      return res.status(400).json({ message: 'Action invalide. Utilisez: approve, reject, processing' });
+    }
+
+    // Mettre à jour la demande
+    await supabaseAPI.update('OrganizerPayouts', {
+      status: newStatus,
+      transaction_ref: transaction_ref || payout.transaction_ref,
+      admin_notes: admin_notes || payout.admin_notes,
+      processed_by: admin.id,
+      processed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }, { id: payout.id });
+
+    // Log d'audit
+    try {
+      await supabaseAPI.insert('AuditLogs', {
+        user_id: admin.id,
+        action: `payout_${action}`,
+        entity_type: 'OrganizerPayouts',
+        entity_id: payout.id,
+        details: JSON.stringify({
+          organizer_id: payout.organizer_id,
+          amount: payout.amount,
+          currency: payout.currency,
+          old_status: payout.status,
+          new_status: newStatus,
+          transaction_ref,
+          admin_notes,
+        }),
+        created_at: new Date().toISOString(),
+      });
+    } catch (auditErr) {
+      console.log('⚠️ Audit log failed:', auditErr.message);
+    }
+
+    res.json({ 
+      message: `Demande ${newStatus === 'completed' ? 'approuvée' : newStatus === 'rejected' ? 'rejetée' : 'mise à jour'}`,
+      payout: {
+        id: payout.id,
+        status: newStatus,
+        processed_at: new Date().toISOString(),
+      }
+    });
+  } catch (err) {
+    console.error('❌ Erreur process payout:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// Détails d'une demande de retrait
+router.get('/payout/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const payouts = await supabaseAPI.select('OrganizerPayouts', { id: parseInt(id) });
+    const payout = payouts[0];
+
+    if (!payout) {
+      return res.status(404).json({ message: 'Demande non trouvée' });
+    }
+
+    // Récupérer l'organisateur
+    const organizers = await supabaseAPI.select('Users', { id: payout.organizer_id });
+    const organizer = organizers[0];
+
+    // Récupérer les infos de paiement de l'organisateur
+    let paymentInfo = null;
+    try {
+      const infos = await supabaseAPI.select('OrganizerPaymentInfo', { user_id: payout.organizer_id });
+      paymentInfo = infos[0] || null;
+    } catch (err) {
+      // Table peut ne pas exister
+    }
+
+    // Récupérer l'admin qui a traité (si applicable)
+    let processedByUser = null;
+    if (payout.processed_by) {
+      const admins = await supabaseAPI.select('Users', { id: payout.processed_by });
+      processedByUser = admins[0] ? { id: admins[0].id, name: admins[0].name } : null;
+    }
+
+    res.json({
+      ...payout,
+      organizer: organizer ? {
+        id: organizer.id,
+        name: organizer.name,
+        email: organizer.email,
+        phone: organizer.phone,
+      } : null,
+      payment_info: paymentInfo,
+      processed_by_user: processedByUser,
+    });
+  } catch (err) {
+    console.error('❌ Erreur get payout detail:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
 module.exports = router;

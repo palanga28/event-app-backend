@@ -25,6 +25,7 @@ import {
   Shield,
   BarChart3,
   Settings,
+  Wallet,
 } from 'lucide-react-native';
 import { colors } from '../theme/colors';
 import { useAuth } from '../contexts/AuthContext';
@@ -175,6 +176,15 @@ export function MobileMenu({ visible, onClose }: MobileMenuProps) {
                 >
                   <Calendar size={20} color="#a78bfa" />
                   <Text style={styles.menuItemText}>Mes événements</Text>
+                  <ChevronRight size={16} color={colors.text.muted} style={styles.chevron} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={() => handleNavigate('OrganizerEarnings')}
+                >
+                  <Wallet size={20} color="#10b981" />
+                  <Text style={styles.menuItemText}>Mes gains</Text>
                   <ChevronRight size={16} color={colors.text.muted} style={styles.chevron} />
                 </TouchableOpacity>
 

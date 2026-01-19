@@ -27,6 +27,7 @@ const eventLikesRoutes = require('./routes/event-likes.routes');
 const notificationsRoutes = require('./routes/notifications.routes');
 const meRoutes = require('./routes/me.routes');
 const paymentRoutes = require('./routes/payment.routes');
+const organizerRoutes = require('./routes/organizer.routes');
 const errorHandler = require('./middlewares/errorHandler.middleware');
 
 const app = express();
@@ -97,6 +98,7 @@ app.use('/api/event-likes', eventLikesRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/me', meRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/organizer', organizerRoutes);
 
 // Validation routes
 const validationRoutes = require('./routes/validation.routes');
