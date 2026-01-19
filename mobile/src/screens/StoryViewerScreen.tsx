@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,19 +8,18 @@ import {
   Dimensions,
   Modal,
   StatusBar,
-  Pressable,
-  PanResponder,
   Animated,
   ActivityIndicator,
+  GestureResponderEvent,
 } from 'react-native';
-import logger from '../lib/logger';
 import { LinearGradient } from 'expo-linear-gradient';
 import { X } from 'lucide-react-native';
 import { colors } from '../theme/colors';
 import { api } from '../lib/api';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const SWIPE_THRESHOLD = 150; // Distance minimale pour déclencher un swipe (augmenté pour éviter fermeture accidentelle)
+const STORY_DURATION = 5000; // 5 secondes par story
+const LONG_PRESS_DELAY = 150; // Délai pour détecter un appui long
 
 type Story = {
   id: number;
@@ -48,22 +47,34 @@ type StoryViewerScreenProps = {
 };
 
 export function StoryViewerScreen({ visible, story, stories, currentIndex, onClose, onNext, onPrev, onStoryViewed }: StoryViewerScreenProps) {
-  const [progress, setProgress] = useState(0);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const pressStartTime = useRef<number>(0);
-  const isLongPress = useRef<boolean>(false);
+  
+  // Utiliser Animated.Value pour la progression (plus fluide)
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const progressAnimation = useRef<Animated.CompositeAnimation | null>(null);
   const viewedStoriesRef = useRef<Set<number>>(new Set());
-  const translateY = useRef(new Animated.Value(0)).current;
-  const opacity = useRef(new Animated.Value(1)).current;
+  
+  // Pour la gestion des taps
+  const touchStartTime = useRef<number>(0);
+  const touchStartX = useRef<number>(0);
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+  const isLongPressing = useRef<boolean>(false);
 
-  // Précharger l'image suivante
-  const preloadNextImage = useCallback(() => {
+  // Précharger les images adjacentes
+  const preloadImages = useCallback(() => {
+    // Précharger la suivante
     if (currentIndex < stories.length - 1) {
       const nextStory = stories[currentIndex + 1];
       if (nextStory?.image_url) {
         Image.prefetch(nextStory.image_url).catch(() => {});
+      }
+    }
+    // Précharger la précédente aussi
+    if (currentIndex > 0) {
+      const prevStory = stories[currentIndex - 1];
+      if (prevStory?.image_url) {
+        Image.prefetch(prevStory.image_url).catch(() => {});
       }
     }
   }, [currentIndex, stories]);
@@ -74,89 +85,73 @@ export function StoryViewerScreen({ visible, story, stories, currentIndex, onClo
     return new Date(storyToCheck.expires_at) < new Date();
   }, []);
 
-  // Gesture handler pour swipe bas (fermer) et swipe horizontal (changer user)
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Activer le pan seulement si mouvement vertical significatif (> 30px)
-        // Ignorer les mouvements horizontaux pour éviter les conflits avec tap
-        return Math.abs(gestureState.dy) > 30 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
-      },
-      onPanResponderGrant: () => {
-        setIsPaused(true);
-      },
-      onPanResponderMove: (_, gestureState) => {
-        // Swipe vers le bas uniquement
-        if (gestureState.dy > 0) {
-          translateY.setValue(gestureState.dy);
-          opacity.setValue(1 - gestureState.dy / 400);
+  // Démarrer l'animation de progression
+  const startProgressAnimation = useCallback(() => {
+    if (progressAnimation.current) {
+      progressAnimation.current.stop();
+    }
+    
+    // Calculer le temps restant basé sur la progression actuelle
+    const currentProgress = (progressAnim as any)._value || 0;
+    const remainingTime = STORY_DURATION * (1 - currentProgress);
+    
+    progressAnimation.current = Animated.timing(progressAnim, {
+      toValue: 1,
+      duration: remainingTime,
+      useNativeDriver: false, // width ne supporte pas native driver
+    });
+    
+    progressAnimation.current.start(({ finished }) => {
+      if (finished) {
+        // Story terminée, passer à la suivante
+        if (currentIndex < stories.length - 1) {
+          onNext();
+        } else {
+          onClose();
         }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        setIsPaused(false);
-        
-        // Swipe bas -> fermer
-        if (gestureState.dy > SWIPE_THRESHOLD) {
-          Animated.parallel([
-            Animated.timing(translateY, {
-              toValue: SCREEN_HEIGHT,
-              duration: 200,
-              useNativeDriver: true,
-            }),
-            Animated.timing(opacity, {
-              toValue: 0,
-              duration: 200,
-              useNativeDriver: true,
-            }),
-          ]).start(() => {
-            onClose();
-            translateY.setValue(0);
-            opacity.setValue(1);
-          });
-          return;
-        }
-        
-        // Reset position si pas assez de swipe
-        Animated.spring(translateY, {
-          toValue: 0,
-          useNativeDriver: true,
-        }).start();
-        Animated.spring(opacity, {
-          toValue: 1,
-          useNativeDriver: true,
-        }).start();
-      },
-    })
-  ).current;
+      }
+    });
+  }, [progressAnim, currentIndex, stories.length, onNext, onClose]);
 
-  // Reset progress et image quand on change de story + précharger la suivante
+  // Mettre en pause l'animation
+  const pauseProgressAnimation = useCallback(() => {
+    if (progressAnimation.current) {
+      progressAnimation.current.stop();
+    }
+  }, []);
+
+  // Reset quand on change de story
   useEffect(() => {
-    setProgress(0);
+    progressAnim.setValue(0);
     setImageLoaded(false);
-    preloadNextImage();
-  }, [currentIndex, preloadNextImage]);
+    preloadImages();
+  }, [currentIndex, progressAnim, preloadImages]);
 
+  // Gérer la visibilité et l'état de la story
   useEffect(() => {
     if (!visible || !story) {
-      setProgress(0);
+      progressAnim.setValue(0);
       setImageLoaded(false);
+      pauseProgressAnimation();
       return;
     }
 
     // Vérifier si la story est expirée
     if (isStoryExpired(story)) {
-      logger.log('Story expirée, passage à la suivante');
-      onNext();
+      if (currentIndex < stories.length - 1) {
+        onNext();
+      } else {
+        onClose();
+      }
       return;
     }
 
-    // Marquer la story comme vue si pas encore fait
+    // Marquer la story comme vue
     if (!viewedStoriesRef.current.has(story.id)) {
       viewedStoriesRef.current.add(story.id);
       markStoryAsViewed(story.id);
     }
-  }, [visible, story, isStoryExpired, onNext]);
+  }, [visible, story, isStoryExpired, currentIndex, stories.length, onNext, onClose, progressAnim, pauseProgressAnimation]);
 
   // Reset viewed stories when viewer closes
   useEffect(() => {
@@ -165,91 +160,85 @@ export function StoryViewerScreen({ visible, story, stories, currentIndex, onClo
     }
   }, [visible]);
 
+  // Démarrer/arrêter l'animation selon l'état
+  useEffect(() => {
+    if (!visible || !story || !imageLoaded) {
+      pauseProgressAnimation();
+      return;
+    }
+
+    if (isPaused) {
+      pauseProgressAnimation();
+    } else {
+      startProgressAnimation();
+    }
+  }, [visible, story, imageLoaded, isPaused, startProgressAnimation, pauseProgressAnimation]);
+
   async function markStoryAsViewed(storyId: number) {
     try {
       await api.post(`/api/stories/${storyId}/view`);
       onStoryViewed?.(storyId);
     } catch (err) {
-      // Silently fail - route may not exist on server yet
-      // Will work once backend is deployed with new routes
+      // Silently fail
     }
   }
 
-  useEffect(() => {
-    if (!visible || !story || !imageLoaded || isPaused) {
+  // Gestion unifiée des touches - plus simple et plus fiable
+  const handleTouchStart = useCallback((e: GestureResponderEvent) => {
+    touchStartTime.current = Date.now();
+    touchStartX.current = e.nativeEvent.pageX;
+    isLongPressing.current = false;
+    
+    // Timer pour détecter l'appui long
+    longPressTimer.current = setTimeout(() => {
+      isLongPressing.current = true;
+      setIsPaused(true);
+    }, LONG_PRESS_DELAY);
+  }, []);
+
+  const handleTouchEnd = useCallback((e: GestureResponderEvent) => {
+    // Annuler le timer d'appui long
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    
+    const touchDuration = Date.now() - touchStartTime.current;
+    const touchEndX = e.nativeEvent.pageX;
+    
+    // Si c'était un appui long, juste reprendre
+    if (isLongPressing.current) {
+      setIsPaused(false);
+      isLongPressing.current = false;
       return;
     }
-
-    const duration = 5000; // 5 secondes par story (comme Instagram)
-    const interval = 50;
-    const increment = (interval / duration) * 100;
-
-    const timer = setInterval(() => {
-      setProgress((prev) => {
-        const newProgress = prev + increment;
-        if (newProgress >= 100) {
-          clearInterval(timer);
-          setTimeout(() => {
-            if (currentIndex < stories.length - 1) {
-              onNext();
-            } else {
-              onClose();
-            }
-          }, 0);
-          return 100;
-        }
-        return newProgress;
-      });
-    }, interval);
-
-    timerRef.current = timer;
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
+    
+    // Tap court = navigation
+    if (touchDuration < LONG_PRESS_DELAY) {
+      const isLeftSide = touchStartX.current < SCREEN_WIDTH * 0.3;
+      if (isLeftSide) {
+        onPrev();
+      } else {
+        onNext();
       }
-    };
-  }, [visible, story, imageLoaded, isPaused, currentIndex, stories.length, onNext, onClose]);
-
-  function handlePressInLeft() {
-    pressStartTime.current = Date.now();
-    isLongPress.current = false;
-    setIsPaused(true);
-  }
-
-  function handlePressOutLeft() {
-    const pressDuration = Date.now() - pressStartTime.current;
-    setIsPaused(false);
-    
-    // Si appui court (< 200ms), c'est un tap pour naviguer
-    if (pressDuration < 200) {
-      onPrev();
     }
-    // Sinon c'était une pause, on ne fait rien (la story continue)
-  }
-
-  function handlePressInRight() {
-    pressStartTime.current = Date.now();
-    isLongPress.current = false;
-    setIsPaused(true);
-  }
-
-  function handlePressOutRight() {
-    const pressDuration = Date.now() - pressStartTime.current;
-    setIsPaused(false);
     
-    // Si appui court (< 200ms), c'est un tap pour naviguer
-    if (pressDuration < 200) {
-      onNext();
+    setIsPaused(false);
+  }, [onPrev, onNext]);
+
+  const handleTouchCancel = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
     }
-    // Sinon c'était une pause, on ne fait rien (la story continue)
-  }
+    setIsPaused(false);
+    isLongPressing.current = false;
+  }, []);
 
-  if (!story) {
-    return null;
-  }
-
-  function formatTimeAgo(dateString: string) {
-    const date = new Date(dateString);
+  // Calculer le temps écoulé
+  const timeAgo = useMemo(() => {
+    if (!story?.created_at) return '';
+    const date = new Date(story.created_at);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
@@ -259,6 +248,16 @@ export function StoryViewerScreen({ visible, story, stories, currentIndex, onClo
       return `${diffMinutes}m`;
     }
     return `${diffHours}h`;
+  }, [story?.created_at]);
+
+  // Interpoler la largeur de la barre de progression
+  const progressWidth = progressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0%', '100%'],
+  });
+
+  if (!story) {
+    return null;
   }
 
   return (
@@ -267,36 +266,22 @@ export function StoryViewerScreen({ visible, story, stories, currentIndex, onClo
       animationType="fade"
       onRequestClose={onClose}
       statusBarTranslucent
+      hardwareAccelerated
     >
-      <StatusBar barStyle="light-content" />
-      <Animated.View 
-        style={[
-          styles.container, 
-          { 
-            transform: [{ translateY }],
-            opacity,
-          }
-        ]}
-        {...panResponder.panHandlers}
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <View 
+        style={styles.container}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchCancel}
       >
-        {/* Zone tactile gauche (story précédente) */}
-        <Pressable
-          style={styles.touchLeft}
-          onPressIn={handlePressInLeft}
-          onPressOut={handlePressOutLeft}
-        />
-        {/* Zone tactile droite (story suivante) */}
-        <Pressable
-          style={styles.touchRight}
-          onPressIn={handlePressInRight}
-          onPressOut={handlePressOutRight}
-        />
+        {/* Image de la story */}
         <Image
           source={{ uri: story.image_url }}
           style={styles.storyImage}
           resizeMode="cover"
           onLoad={() => setImageLoaded(true)}
-          onError={() => setImageLoaded(true)} // Continuer même si erreur
+          onError={() => setImageLoaded(true)}
         />
         
         {/* Loading indicator */}
@@ -308,30 +293,29 @@ export function StoryViewerScreen({ visible, story, stories, currentIndex, onClo
         
         {/* Gradient overlay */}
         <LinearGradient
-          colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.3)']}
+          colors={['rgba(0,0,0,0.5)', 'transparent', 'transparent', 'rgba(0,0,0,0.3)']}
+          locations={[0, 0.2, 0.8, 1]}
           style={styles.gradient}
+          pointerEvents="none"
         />
 
-        {/* Progress bars - une par story de l'utilisateur */}
-        <View style={styles.progressContainer}>
+        {/* Progress bars */}
+        <View style={styles.progressContainer} pointerEvents="none">
           <View style={styles.progressBarsRow}>
             {stories.map((s, idx) => (
-              <View key={s.id} style={[styles.progressBar, { flex: 1 }]}>
-                <View 
-                  style={[
-                    styles.progressFill, 
-                    { 
-                      width: idx < currentIndex ? '100%' : idx === currentIndex ? `${progress}%` : '0%' 
-                    }
-                  ]} 
-                />
+              <View key={s.id} style={styles.progressBar}>
+                {idx < currentIndex ? (
+                  <View style={[styles.progressFill, { width: '100%' }]} />
+                ) : idx === currentIndex ? (
+                  <Animated.View style={[styles.progressFill, { width: progressWidth }]} />
+                ) : null}
               </View>
             ))}
           </View>
         </View>
 
         {/* Header */}
-        <View style={styles.header}>
+        <View style={styles.header} pointerEvents="box-none">
           <View style={styles.userInfo}>
             {story.user?.avatar_url ? (
               <Image
@@ -347,23 +331,34 @@ export function StoryViewerScreen({ visible, story, stories, currentIndex, onClo
             )}
             <View style={styles.userDetails}>
               <Text style={styles.userName}>{story.user?.name || 'Anonyme'}</Text>
-              <Text style={styles.timeAgo}>{formatTimeAgo(story.created_at)}</Text>
+              <Text style={styles.timeAgo}>{timeAgo}</Text>
             </View>
           </View>
           
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <X size={24} color={colors.text.primary} />
+          <TouchableOpacity 
+            style={styles.closeButton} 
+            onPress={onClose}
+            activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <X size={24} color="#fff" />
           </TouchableOpacity>
         </View>
 
-        {/* Caption */}
-        {story.caption && (
-          <View style={styles.captionContainer}>
-            <Text style={styles.caption}>{story.caption}</Text>
+        {/* Indicateur de pause */}
+        {isPaused && imageLoaded && (
+          <View style={styles.pauseIndicator} pointerEvents="none">
+            <Text style={styles.pauseText}>En pause</Text>
           </View>
         )}
 
-      </Animated.View>
+        {/* Caption */}
+        {story.caption && (
+          <View style={styles.captionContainer} pointerEvents="none">
+            <Text style={styles.caption}>{story.caption}</Text>
+          </View>
+        )}
+      </View>
     </Modal>
   );
 }
@@ -392,48 +387,31 @@ const styles = StyleSheet.create({
     top: 50,
     left: 8,
     right: 8,
-    zIndex: 10,
   },
   progressBarsRow: {
     flexDirection: 'row',
     gap: 4,
   },
   progressBar: {
-    height: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 2,
+    flex: 1,
+    height: 2.5,
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+    borderRadius: 1.5,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: colors.text.primary,
-    borderRadius: 2,
-  },
-  touchLeft: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: '30%',
-    zIndex: 5,
-  },
-  touchRight: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: '70%',
-    zIndex: 5,
+    backgroundColor: '#fff',
+    borderRadius: 1.5,
   },
   header: {
     position: 'absolute',
-    top: 60,
-    left: 16,
-    right: 16,
+    top: 58,
+    left: 12,
+    right: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    zIndex: 10,
   },
   userInfo: {
     flexDirection: 'row',
@@ -441,62 +419,77 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     borderWidth: 2,
-    borderColor: colors.text.primary,
+    borderColor: '#fff',
   },
   avatarPlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.background.card,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: colors.text.primary,
+    borderColor: '#fff',
   },
   avatarPlaceholderText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
-    color: colors.text.primary,
+    color: '#fff',
   },
   userDetails: {
-    marginLeft: 12,
+    marginLeft: 10,
     flex: 1,
   },
   userName: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.text.primary,
+    color: '#fff',
   },
   timeAgo: {
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.7)',
-    marginTop: 2,
+    marginTop: 1,
   },
   closeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
   },
+  pauseIndicator: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -40 }, { translateY: -15 }],
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  pauseText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+  },
   captionContainer: {
     position: 'absolute',
-    bottom: 40,
+    bottom: 50,
     left: 16,
     right: 16,
-    zIndex: 10,
   },
   caption: {
-    fontSize: 16,
-    color: colors.text.primary,
+    fontSize: 15,
+    color: '#fff',
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    textShadowRadius: 4,
+    lineHeight: 22,
   },
 });

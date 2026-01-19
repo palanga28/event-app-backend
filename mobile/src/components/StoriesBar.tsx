@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import logger from '../lib/logger';
 import {
   View,
@@ -54,12 +54,16 @@ export function StoriesBar() {
     loadStories();
   }, []);
 
-  // Rafraîchir les stories quand le viewer se ferme
+  // Rafraîchir les stories quand le viewer se ferme (avec délai pour éviter le lag)
   useEffect(() => {
-    if (!viewerVisible) {
-      loadStories();
+    if (!viewerVisible && user) {
+      // Petit délai pour laisser l'animation de fermeture se terminer
+      const timer = setTimeout(() => {
+        loadStories();
+      }, 300);
+      return () => clearTimeout(timer);
     }
-  }, [viewerVisible]);
+  }, [viewerVisible, user]);
 
   async function loadStories() {
     try {
@@ -137,27 +141,29 @@ export function StoriesBar() {
     }
   }
 
-  function handleAddStory() {
+  const handleAddStory = useCallback(() => {
     navigation.navigate('Main', { screen: 'ProfileTab' });
-  }
+  }, [navigation]);
 
-  function handleViewStory(userGroup: UserStories) {
+  const handleViewStory = useCallback((userGroup: UserStories) => {
     const index = userStoriesGroups.findIndex(g => g.userId === userGroup.userId);
     setCurrentUserIndex(index >= 0 ? index : 0);
-    setCurrentStoryIndex(0); // Commencer par la première story (la plus ancienne)
+    setCurrentStoryIndex(0);
     setViewerVisible(true);
-  }
+  }, [userStoriesGroups]);
 
-  function handleCloseViewer() {
+  const handleCloseViewer = useCallback(() => {
     setViewerVisible(false);
     setCurrentUserIndex(0);
     setCurrentStoryIndex(0);
-  }
+  }, []);
 
-  function handleStoryViewed(storyId: number) {
-    // Mettre à jour localement le statut "viewed" et le compteur
+  const handleStoryViewed = useCallback((storyId: number) => {
     setUserStoriesGroups(prevGroups => 
       prevGroups.map(group => {
+        const storyExists = group.stories.some(s => s.id === storyId);
+        if (!storyExists) return group;
+        
         const updatedStories = group.stories.map(s => 
           s.id === storyId ? { ...s, viewed: true } : s
         );
@@ -169,42 +175,34 @@ export function StoriesBar() {
         };
       })
     );
-  }
+  }, []);
 
-  function handleNextStory() {
+  const handleNextStory = useCallback(() => {
     const currentGroup = userStoriesGroups[currentUserIndex];
     if (!currentGroup) {
       handleCloseViewer();
       return;
     }
 
-    // S'il reste des stories pour cet utilisateur
     if (currentStoryIndex < currentGroup.stories.length - 1) {
-      setCurrentStoryIndex(currentStoryIndex + 1);
-    } 
-    // Sinon, passer à l'utilisateur suivant
-    else if (currentUserIndex < userStoriesGroups.length - 1) {
-      setCurrentUserIndex(currentUserIndex + 1);
+      setCurrentStoryIndex(prev => prev + 1);
+    } else if (currentUserIndex < userStoriesGroups.length - 1) {
+      setCurrentUserIndex(prev => prev + 1);
       setCurrentStoryIndex(0);
-    } 
-    // Plus rien à afficher
-    else {
+    } else {
       handleCloseViewer();
     }
-  }
+  }, [userStoriesGroups, currentUserIndex, currentStoryIndex, handleCloseViewer]);
 
-  function handlePrevStory() {
-    // S'il y a des stories précédentes pour cet utilisateur
+  const handlePrevStory = useCallback(() => {
     if (currentStoryIndex > 0) {
-      setCurrentStoryIndex(currentStoryIndex - 1);
-    }
-    // Sinon, revenir à l'utilisateur précédent
-    else if (currentUserIndex > 0) {
+      setCurrentStoryIndex(prev => prev - 1);
+    } else if (currentUserIndex > 0) {
       const prevGroup = userStoriesGroups[currentUserIndex - 1];
-      setCurrentUserIndex(currentUserIndex - 1);
+      setCurrentUserIndex(prev => prev - 1);
       setCurrentStoryIndex(prevGroup.stories.length - 1);
     }
-  }
+  }, [userStoriesGroups, currentUserIndex, currentStoryIndex]);
 
   // Obtenir la story actuelle
   const currentGroup = userStoriesGroups[currentUserIndex];

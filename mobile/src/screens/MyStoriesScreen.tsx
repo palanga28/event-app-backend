@@ -73,10 +73,8 @@ export default function MyStoriesScreen() {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [9, 16],
+      allowsEditing: false, // Désactivé car l'éditeur natif Android a des problèmes de visibilité des boutons
       quality: 0.8,
-      presentationStyle: ImagePicker.UIImagePickerPresentationStyle.FULL_SCREEN,
     });
 
     if (!result.canceled && result.assets[0]) {
