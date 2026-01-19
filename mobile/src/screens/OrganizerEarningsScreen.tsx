@@ -166,8 +166,8 @@ export default function OrganizerEarningsScreen() {
     );
   };
 
-  const formatCurrency = (amount: number, currency: string = 'CDF') => {
-    return `${amount.toLocaleString()} ${currency}`;
+  const formatCurrency = (amount?: number, currency: string = 'CDF') => {
+    return `${(amount || 0).toLocaleString()} ${currency}`;
   };
 
   const formatDate = (dateString: string) => {
