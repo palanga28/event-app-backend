@@ -9,6 +9,8 @@ import {
   ActivityIndicator,
   ScrollView,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { 
@@ -124,7 +126,11 @@ export default function PaymentScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
+    >
       <LinearGradient
         colors={colors.gradients.dark as [string, string]}
         style={StyleSheet.absoluteFill}
@@ -138,7 +144,12 @@ export default function PaymentScreen() {
         <Text style={styles.headerTitle}>Paiement Mobile Money</Text>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: 100 }}
+      >
         {/* Status: Idle - Formulaire */}
         {status === 'idle' && (
           <>
@@ -316,7 +327,7 @@ export default function PaymentScreen() {
           </View>
         )}
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
