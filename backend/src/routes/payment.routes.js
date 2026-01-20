@@ -10,7 +10,7 @@ console.log('✅ payment.routes chargé');
 // =========================
 // MODE TEST - Désactiver pour utiliser WonyaSoft en production
 // =========================
-const TEST_MODE = true; // Mettre à false pour activer WonyaSoft
+const TEST_MODE = false; // Mettre à false pour activer WonyaSoft
 
 // =========================
 // CONFIGURATION DES COMMISSIONS

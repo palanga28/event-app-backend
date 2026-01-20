@@ -27,7 +27,7 @@ import { colors } from '../theme/colors';
 type PaymentStatus = 'idle' | 'initiating' | 'processing' | 'completed' | 'failed';
 
 // MODE TEST - Mettre à false pour activer le paiement réel
-const TEST_MODE = true;
+const TEST_MODE = false;
 
 export default function PaymentScreen() {
   const navigation = useNavigation<any>();
