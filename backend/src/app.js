@@ -115,6 +115,10 @@ app.use('/api/validation', validationRoutes);
 const pushNotificationsRoutes = require('./routes/push-notifications.routes');
 app.use('/api/push-notifications', pushNotificationsRoutes);
 
+// Verification routes (organisateur vérifié)
+const verificationRoutes = require('./routes/verification.routes');
+app.use('/api/verification', verificationRoutes);
+
 // Health check étendu pour production
 app.get('/health', async (req, res) => {
   const health = {

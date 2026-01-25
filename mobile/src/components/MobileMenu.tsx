@@ -26,6 +26,7 @@ import {
   BarChart3,
   Settings,
   Wallet,
+  BadgeCheck,
 } from 'lucide-react-native';
 import { colors } from '../theme/colors';
 import { useAuth } from '../contexts/AuthContext';
@@ -190,6 +191,15 @@ export function MobileMenu({ visible, onClose }: MobileMenuProps) {
 
                 <TouchableOpacity
                   style={styles.menuItem}
+                  onPress={() => handleNavigate('OrganizerVerification')}
+                >
+                  <BadgeCheck size={20} color="#8b5cf6" />
+                  <Text style={styles.menuItemText}>Devenir vérifié</Text>
+                  <ChevronRight size={16} color={colors.text.muted} style={styles.chevron} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.menuItem}
                   onPress={() => handleNavigate('TicketsTab')}
                 >
                   <Ticket size={20} color="#34d399" />
@@ -289,6 +299,15 @@ export function MobileMenu({ visible, onClose }: MobileMenuProps) {
                 >
                   <Wallet size={20} color="#10b981" />
                   <Text style={styles.menuItemText}>Demandes de retrait</Text>
+                  <ChevronRight size={16} color={colors.text.muted} style={styles.chevron} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={() => handleNavigate('AdminVerifications')}
+                >
+                  <BadgeCheck size={20} color="#8b5cf6" />
+                  <Text style={styles.menuItemText}>Vérifications organisateurs</Text>
                   <ChevronRight size={16} color={colors.text.muted} style={styles.chevron} />
                 </TouchableOpacity>
               </View>

@@ -68,6 +68,8 @@ import TicketDetailScreen from '../screens/TicketDetailScreen';
 import OrganizerQRCodeScreen from '../screens/OrganizerQRCodeScreen';
 import OrganizerEarningsScreen from '../screens/OrganizerEarningsScreen';
 import AdminPayoutsScreen from '../screens/AdminPayoutsScreen';
+import OrganizerVerificationScreen from '../screens/OrganizerVerificationScreen';
+import AdminVerificationsScreen from '../screens/AdminVerificationsScreen';
 // import QRScannerScreen from '../screens/QRScannerScreen'; // Désactivé temporairement pour Expo Go
 
 const Stack = createNativeStackNavigator();
@@ -207,6 +209,8 @@ export default function AppNavigator() {
         <Stack.Screen name="OrganizerQRCode" component={OrganizerQRCodeScreen} />
         <Stack.Screen name="OrganizerEarnings" component={OrganizerEarningsScreen} />
         <Stack.Screen name="AdminPayouts" component={AdminPayoutsScreen} />
+        <Stack.Screen name="OrganizerVerification" component={OrganizerVerificationScreen} />
+        <Stack.Screen name="AdminVerifications" component={AdminVerificationsScreen} />
         {/* <Stack.Screen name="QRScanner" component={QRScannerScreen} /> */}
       </Stack.Navigator>
     </NavigationContainer>
