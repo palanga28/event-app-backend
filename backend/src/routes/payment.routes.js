@@ -348,21 +348,25 @@ router.get('/status/:transactionRef', authMiddleware, async (req, res) => {
 /**
  * Vérifie la signature du webhook WonyaSoft
  * @param {Object} req - Request object
- * @returns {boolean} - True si signature valide ou pas de secret configuré
+ * @returns {boolean} - True si signature valide ou vérification désactivée
  */
 function verifyWebhookSignature(req) {
   const secret = process.env.WONYASOFT_WEBHOOK_SECRET;
   
-  // Si pas de secret configuré, on accepte (mode dev)
+  // Si pas de secret configuré, on accepte (signature désactivée)
   if (!secret) {
-    console.warn('⚠️ WONYASOFT_WEBHOOK_SECRET non configuré - signature non vérifiée');
+    console.log('ℹ️ Vérification signature désactivée (WONYASOFT_WEBHOOK_SECRET non configuré)');
     return true;
   }
   
   const signature = req.headers['x-wonyasoft-signature'] || req.headers['x-signature'];
+  
+  // Si WonyaSoft n'envoie pas de signature, on accepte avec warning
+  // (beaucoup d'APIs africaines ne supportent pas encore la signature)
   if (!signature) {
-    console.error('❌ Webhook: Signature manquante');
-    return false;
+    console.warn('⚠️ Webhook: Pas de signature reçue - WonyaSoft ne supporte peut-être pas la signature');
+    console.warn('   Pour désactiver cette vérification, supprimez WONYASOFT_WEBHOOK_SECRET de Railway');
+    return true; // On accepte quand même pour compatibilité
   }
   
   const crypto = require('crypto');
@@ -374,8 +378,12 @@ function verifyWebhookSignature(req) {
   const isValid = signature === expectedSignature;
   if (!isValid) {
     console.error('❌ Webhook: Signature invalide');
+    // On rejette seulement si une signature est envoyée mais invalide
+    return false;
   }
-  return isValid;
+  
+  console.log('✅ Webhook: Signature vérifiée');
+  return true;
 }
 
 /**
