@@ -71,25 +71,36 @@ export default function OrganizerVerificationScreen() {
   const [selfieUrl, setSelfieUrl] = useState('');
 
   const loadStatus = useCallback(async () => {
+    // Ne pas appeler l'API si l'utilisateur n'est pas connecté
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
       const res = await api.get('/api/verification/status');
       setStatus(res.data);
-
-      // Pré-remplir avec le nom de l'utilisateur
-      if (user?.name && !fullName) {
-        setFullName(user.name);
+    } catch (err: any) {
+      // Ignorer les erreurs 401/404 silencieusement
+      if (err?.response?.status !== 401 && err?.response?.status !== 404) {
+        console.error('Erreur chargement statut:', err);
       }
-    } catch (err) {
-      console.error('Erreur chargement statut:', err);
     } finally {
       setLoading(false);
     }
-  }, [user?.name, fullName]);
+  }, [user?.id]);
 
   useEffect(() => {
     loadStatus();
   }, [loadStatus]);
+
+  // Pré-remplir le nom une seule fois au chargement
+  useEffect(() => {
+    if (user?.name && !fullName) {
+      setFullName(user.name);
+    }
+  }, []);
 
   const pickImage = async (setUrl: (url: string) => void) => {
     try {
