@@ -344,17 +344,83 @@ router.get('/status/:transactionRef', authMiddleware, async (req, res) => {
 // =========================
 // WEBHOOK CALLBACK WONYASOFT
 // =========================
+
+/**
+ * Vérifie la signature du webhook WonyaSoft
+ * @param {Object} req - Request object
+ * @returns {boolean} - True si signature valide ou pas de secret configuré
+ */
+function verifyWebhookSignature(req) {
+  const secret = process.env.WONYASOFT_WEBHOOK_SECRET;
+  
+  // Si pas de secret configuré, on accepte (mode dev)
+  if (!secret) {
+    console.warn('⚠️ WONYASOFT_WEBHOOK_SECRET non configuré - signature non vérifiée');
+    return true;
+  }
+  
+  const signature = req.headers['x-wonyasoft-signature'] || req.headers['x-signature'];
+  if (!signature) {
+    console.error('❌ Webhook: Signature manquante');
+    return false;
+  }
+  
+  const crypto = require('crypto');
+  const expectedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(JSON.stringify(req.body))
+    .digest('hex');
+  
+  const isValid = signature === expectedSignature;
+  if (!isValid) {
+    console.error('❌ Webhook: Signature invalide');
+  }
+  return isValid;
+}
+
+/**
+ * Vérifie si l'IP source est autorisée (whitelist WonyaSoft)
+ * @param {Object} req - Request object
+ * @returns {boolean} - True si IP autorisée ou pas de whitelist configurée
+ */
+function verifyWebhookIP(req) {
+  const allowedIPs = process.env.WONYASOFT_ALLOWED_IPS;
+  
+  // Si pas de whitelist configurée, on accepte
+  if (!allowedIPs) {
+    return true;
+  }
+  
+  const ipList = allowedIPs.split(',').map(ip => ip.trim());
+  const clientIP = req.ip || req.headers['x-forwarded-for']?.split(',')[0] || req.connection?.remoteAddress;
+  
+  const isAllowed = ipList.includes(clientIP);
+  if (!isAllowed) {
+    console.error(`❌ Webhook: IP non autorisée: ${clientIP}`);
+  }
+  return isAllowed;
+}
+
 router.post('/webhook/wonyasoft', async (req, res) => {
   console.log('📥 Webhook WonyaSoft reçu:', JSON.stringify(req.body));
 
   try {
+    // 1. Vérification sécurité (signature + IP)
+    if (!verifyWebhookSignature(req)) {
+      return res.status(401).json({ message: 'Signature invalide' });
+    }
+    
+    if (!verifyWebhookIP(req)) {
+      return res.status(403).json({ message: 'IP non autorisée' });
+    }
+
     const { RefTransa, status, documentId } = req.body;
 
     if (!RefTransa) {
       return res.status(400).json({ message: 'RefTransa manquant' });
     }
 
-    // Récupérer le paiement
+    // 2. Récupérer le paiement
     const payments = await supabaseAPI.select('Payments', { transaction_ref: RefTransa });
     const payment = payments[0];
 
@@ -363,7 +429,17 @@ router.post('/webhook/wonyasoft', async (req, res) => {
       return res.status(404).json({ message: 'Paiement non trouvé' });
     }
 
-    // Interpréter le statut
+    // 3. IDEMPOTENCE: Si déjà traité (completed ou failed), ne pas retraiter
+    if (payment.status === 'completed' || payment.status === 'failed') {
+      console.log(`⏭️ Webhook: Paiement ${RefTransa} déjà traité (${payment.status})`);
+      return res.json({ 
+        message: 'Paiement déjà traité', 
+        status: payment.status,
+        idempotent: true 
+      });
+    }
+
+    // 4. Interpréter le statut
     const statusLower = (status || '').toLowerCase();
     let newStatus = payment.status;
 
@@ -373,16 +449,22 @@ router.post('/webhook/wonyasoft', async (req, res) => {
       newStatus = 'failed';
     }
 
+    // Si pas de changement de statut, ne rien faire
+    if (newStatus === payment.status) {
+      console.log(`⏭️ Webhook: Pas de changement de statut pour ${RefTransa}`);
+      return res.json({ message: 'Pas de changement', status: payment.status });
+    }
+
     console.log(`📝 Webhook: ${RefTransa} - ${payment.status} -> ${newStatus}`);
 
-    // Mettre à jour le paiement
+    // 5. Mettre à jour le paiement
     await supabaseAPI.update('Payments', {
       status: newStatus,
       provider_transaction_id: documentId || payment.provider_transaction_id,
       webhook_received_at: new Date().toISOString(),
     }, { id: payment.id });
 
-    // Si paiement réussi, créer le ticket
+    // 6. Si paiement réussi, créer le ticket (une seule fois grâce à l'idempotence)
     if (newStatus === 'completed' && !payment.ticket_id) {
       const ticket = await createTicketFromPayment(payment);
       await supabaseAPI.update('Payments', { ticket_id: ticket.id }, { id: payment.id });
