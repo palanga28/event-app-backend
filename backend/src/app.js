@@ -119,6 +119,10 @@ app.use('/api/push-notifications', pushNotificationsRoutes);
 const verificationRoutes = require('./routes/verification.routes');
 app.use('/api/verification', verificationRoutes);
 
+// Moderation routes (workflow événements)
+const moderationRoutes = require('./routes/moderation.routes');
+app.use('/api/moderation', moderationRoutes);
+
 // Health check étendu pour production
 app.get('/health', async (req, res) => {
   const health = {

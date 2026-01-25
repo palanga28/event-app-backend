@@ -310,6 +310,15 @@ export function MobileMenu({ visible, onClose }: MobileMenuProps) {
                   <Text style={styles.menuItemText}>Vérifications organisateurs</Text>
                   <ChevronRight size={16} color={colors.text.muted} style={styles.chevron} />
                 </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={() => handleNavigate('AdminModeration')}
+                >
+                  <Shield size={20} color="#f59e0b" />
+                  <Text style={styles.menuItemText}>Modération événements</Text>
+                  <ChevronRight size={16} color={colors.text.muted} style={styles.chevron} />
+                </TouchableOpacity>
               </View>
             )}
 

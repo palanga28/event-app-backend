@@ -188,7 +188,7 @@ async function createMentionsAndNotifications({ sourceType, sourceId, createdBy,
 // =========================
 router.post('/', authMiddleware, async (req, res) => {
   const user = req.user;
-  const { title, description, startDate, endDate, location, coverImage, images, capacity } = req.body;
+  const { title, description, startDate, endDate, location, coverImage, images, capacity, submitForReview } = req.body;
 
   try {
     if (!title || typeof title !== 'string' || title.trim().length < 3) {
@@ -232,6 +232,27 @@ router.post('/', authMiddleware, async (req, res) => {
       eventCapacity = capacityNum;
     }
 
+    // Récupérer les infos de l'utilisateur pour déterminer le statut
+    const users = await supabaseAPI.select('Users', { id: user.id });
+    const userData = users[0];
+    
+    // Déterminer le statut initial:
+    // - Admin/Moderator: publié directement
+    // - Organisateur vérifié: publié directement
+    // - Autres: pending_review (ou draft si pas submitForReview)
+    let initialStatus = 'draft';
+    let submittedAt = null;
+    
+    if (userData?.role === 'admin' || userData?.role === 'moderator') {
+      initialStatus = 'published';
+    } else if (userData?.is_verified_organizer) {
+      initialStatus = 'published';
+    } else if (submitForReview !== false) {
+      // Par défaut, soumettre pour review
+      initialStatus = 'pending_review';
+      submittedAt = new Date().toISOString();
+    }
+
     const event = await supabaseAPI.insert('Events', {
       title: title.trim(),
       description,
@@ -242,7 +263,8 @@ router.post('/', authMiddleware, async (req, res) => {
       images: normalizedImages,
       capacity: eventCapacity,
       organizer_id: user.id,
-      status: 'published',
+      status: initialStatus,
+      submitted_at: submittedAt,
       created_at: new Date().toISOString()
     });
 
