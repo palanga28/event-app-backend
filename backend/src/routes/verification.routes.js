@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { supabaseAPI } = require('../config/api');
 const authMiddleware = require('../middlewares/auth.middleware');
-const adminMiddleware = require('../middlewares/admin.middleware');
+const { adminMiddleware } = require('../middlewares/role.middleware');
 
 console.log('✅ verification.routes chargé');
 
