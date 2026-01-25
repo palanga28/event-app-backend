@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Badge } from '@/components/ui/badge'
+// import { Badge } from '@/components/ui/badge'
 
 type Verification = {
   id: number

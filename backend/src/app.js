@@ -49,6 +49,7 @@ const allowedOrigins = [
   'http://127.0.0.1:5173',
   'http://127.0.0.1:8081',
   'http://192.168.46.225:5173',
+  'https://ampia-event-admin.netlify.app',
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
