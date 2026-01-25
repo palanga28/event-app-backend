@@ -76,7 +76,13 @@ router.get('/:id/public', async (req, res) => {
       return res.status(404).json({ message: 'Utilisateur non trouvé' });
     }
 
-    res.json({ id: u.id, name: u.name, avatar_url: u.avatar_url || null, bio: u.bio || null });
+    res.json({ 
+      id: u.id, 
+      name: u.name, 
+      avatar_url: u.avatar_url || null, 
+      bio: u.bio || null,
+      is_verified_organizer: u.is_verified_organizer || false
+    });
   } catch (err) {
     console.error('Erreur récupération profil public:', err);
     res.status(500).json({ message: 'Erreur serveur' });

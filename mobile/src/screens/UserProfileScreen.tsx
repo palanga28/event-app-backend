@@ -11,7 +11,7 @@ import {
   FlatList,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowLeft, UserPlus, UserMinus, Calendar, MapPin, Mail } from 'lucide-react-native';
+import { ArrowLeft, UserPlus, UserMinus, Calendar, MapPin, Mail, BadgeCheck } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { api } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -23,6 +23,7 @@ type PublicUser = {
   email?: string;
   avatar_url?: string | null;
   bio?: string | null;
+  is_verified_organizer?: boolean;
 };
 
 type Event = {
@@ -216,7 +217,12 @@ export default function UserProfileScreen() {
             )}
           </View>
 
-          <Text style={styles.name}>{profile.name}</Text>
+          <View style={styles.nameContainer}>
+            <Text style={styles.name}>{profile.name}</Text>
+            {profile.is_verified_organizer && (
+              <BadgeCheck size={20} color="#ffffff" fill="#3b82f6" />
+            )}
+          </View>
           {profile.bio && <Text style={styles.bio}>{profile.bio}</Text>}
 
           {/* Stats */}
@@ -466,5 +472,11 @@ const styles = StyleSheet.create({
   backButtonText: {
     color: colors.text.primary,
     fontWeight: '600',
+  },
+  nameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
 });

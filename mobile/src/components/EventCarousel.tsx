@@ -216,7 +216,7 @@ export function EventCarousel({ events, favoriteIds, onToggleFavorite }: Props) 
                       <View style={styles.organizerNameRow}>
                         <Text style={styles.organizerName}>{event.organizer.name}</Text>
                         {event.organizer.is_verified_organizer && (
-                          <BadgeCheck size={14} color="#8b5cf6" />
+                          <BadgeCheck size={14} color="#ffffff" fill="#3b82f6" />
                         )}
                       </View>
                       <Text style={styles.organizerLabel}>Organisateur</Text>

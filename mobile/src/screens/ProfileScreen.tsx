@@ -270,7 +270,7 @@ export default function ProfileScreen() {
           <View style={styles.nameContainer}>
             <Text style={styles.userName}>{user?.name}</Text>
             {user?.is_verified_organizer && (
-              <BadgeCheck size={20} color="#8b5cf6" style={styles.verifiedBadge} />
+              <BadgeCheck size={20} color="#ffffff" fill="#3b82f6" style={styles.verifiedBadge} />
             )}
           </View>
           <Text style={styles.userEmail}>{user?.email}</Text>
