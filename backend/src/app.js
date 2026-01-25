@@ -127,6 +127,10 @@ app.use('/api/moderation', moderationRoutes);
 const ticketValidationRoutes = require('./routes/ticket-validation.routes');
 app.use('/api/tickets', ticketValidationRoutes);
 
+// Audit logs routes (traçabilité)
+const auditRoutes = require('./routes/audit.routes');
+app.use('/api/audit', auditRoutes);
+
 // Health check étendu pour production
 app.get('/health', async (req, res) => {
   const health = {
