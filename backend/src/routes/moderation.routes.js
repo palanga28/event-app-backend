@@ -3,6 +3,7 @@ const router = express.Router();
 const { supabaseAPI } = require('../config/api');
 const authMiddleware = require('../middlewares/auth.middleware');
 const { adminMiddleware, moderatorMiddleware } = require('../middlewares/role.middleware');
+const similarityService = require('../services/similarity-detection.service');
 
 console.log('✅ moderation.routes chargé');
 
@@ -403,6 +404,127 @@ router.post('/events/:id/flag', authMiddleware, moderatorMiddleware, async (req,
     });
   } catch (err) {
     console.error('Erreur ajout flag:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+/**
+ * GET /api/moderation/events/:id/similarity
+ * Analyse la similarité d'un événement avec les autres
+ */
+router.get('/events/:id/similarity', authMiddleware, moderatorMiddleware, async (req, res) => {
+  const eventId = parseInt(req.params.id);
+
+  try {
+    const events = await supabaseAPI.select('Events', { id: eventId });
+    const event = events[0];
+
+    if (!event) {
+      return res.status(404).json({ message: 'Événement non trouvé' });
+    }
+
+    // Récupérer tous les événements publiés pour comparaison
+    const allEvents = await supabaseAPI.select('Events', { status: 'published' }, { limit: 500 });
+
+    // Analyser les similarités
+    const analysis = await similarityService.checkForDuplicates(event, allEvents);
+
+    res.json({
+      eventId,
+      ...analysis,
+    });
+  } catch (err) {
+    console.error('Erreur analyse similarité:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+/**
+ * GET /api/moderation/organizers/:id/patterns
+ * Analyse les patterns suspects d'un organisateur
+ */
+router.get('/organizers/:id/patterns', authMiddleware, moderatorMiddleware, async (req, res) => {
+  const organizerId = parseInt(req.params.id);
+
+  try {
+    // Récupérer les événements de l'organisateur
+    const organizerEvents = await supabaseAPI.select('Events', { organizer_id: organizerId }, { limit: 100 });
+
+    if (organizerEvents.length === 0) {
+      return res.json({
+        organizerId,
+        eventsCount: 0,
+        patterns: { suspiciousPatterns: [], riskLevel: 'low' },
+      });
+    }
+
+    // Récupérer tous les événements pour comparaison
+    const allEvents = await supabaseAPI.select('Events', {}, { limit: 1000 });
+
+    // Analyser les patterns
+    const patterns = similarityService.analyzeOrganizerPatterns(organizerId, organizerEvents, allEvents);
+
+    // Récupérer les infos de l'organisateur
+    const users = await supabaseAPI.select('Users', { id: organizerId });
+    const organizer = users[0];
+
+    res.json({
+      organizerId,
+      organizer: organizer ? {
+        name: organizer.name,
+        email: organizer.email,
+        is_verified_organizer: organizer.is_verified_organizer,
+        created_at: organizer.created_at,
+      } : null,
+      eventsCount: organizerEvents.length,
+      patterns,
+    });
+  } catch (err) {
+    console.error('Erreur analyse patterns organisateur:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+/**
+ * POST /api/moderation/check-similarity
+ * Vérifie la similarité d'un événement avant publication
+ */
+router.post('/check-similarity', authMiddleware, async (req, res) => {
+  const { title, location, startDate, images } = req.body;
+
+  try {
+    if (!title) {
+      return res.status(400).json({ message: 'Titre requis' });
+    }
+
+    // Créer un objet événement temporaire
+    const tempEvent = {
+      id: 0,
+      title,
+      location,
+      start_date: startDate,
+      images: images || [],
+      organizer_id: req.user.id,
+    };
+
+    // Récupérer les événements publiés récents
+    const recentEvents = await supabaseAPI.select(
+      'Events',
+      { status: 'published' },
+      { limit: 200, order: 'created_at.desc' }
+    );
+
+    // Analyser les similarités
+    const analysis = await similarityService.checkForDuplicates(tempEvent, recentEvents);
+
+    res.json({
+      ...analysis,
+      recommendation: analysis.hasPotentialDuplicates
+        ? 'Attention: Cet événement ressemble à des événements existants. Vérifiez qu\'il ne s\'agit pas d\'un doublon.'
+        : 'Aucun doublon détecté.',
+    });
+  } catch (err) {
+    console.error('Erreur vérification similarité:', err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
 });
