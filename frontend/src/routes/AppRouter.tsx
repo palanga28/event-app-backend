@@ -32,6 +32,8 @@ import AdminUsersPage from '../pages/admin/AdminUsersPage'
 import AdminSettingsPage from '../pages/admin/AdminSettingsPage'
 import AdminPaymentsPage from '../pages/admin/AdminPaymentsPage'
 import AdminTicketsPage from '../pages/admin/AdminTicketsPage'
+import AdminModerationPage from '../pages/admin/AdminModerationPage'
+import AdminVerificationsPage from '../pages/admin/AdminVerificationsPage'
 import RequireAuth from './RequireAuth'
 import RequireRole from './RequireRole'
 
@@ -181,6 +183,14 @@ export default function AppRouter() {
                     {
                       path: 'admin/settings',
                       element: <AdminSettingsPage />,
+                    },
+                    {
+                      path: 'admin/moderation',
+                      element: <AdminModerationPage />,
+                    },
+                    {
+                      path: 'admin/verifications',
+                      element: <AdminVerificationsPage />,
                     },
                   ],
                 },

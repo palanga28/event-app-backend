@@ -12,6 +12,68 @@ console.log('✅ moderation.routes chargé');
 // =============================================
 
 /**
+ * GET /api/moderation/pending
+ * Liste simple des événements en attente (pour le dashboard web)
+ */
+router.get('/pending', authMiddleware, moderatorMiddleware, async (req, res) => {
+  try {
+    const events = await supabaseAPI.select(
+      'Events',
+      { status: 'pending_review' },
+      { limit: 100, order: 'submitted_at.desc.nullsfirst,created_at.desc' }
+    );
+
+    // Récupérer les organisateurs
+    const organizerIds = [...new Set(events.map(e => e.organizer_id).filter(Boolean))];
+    const organizers = organizerIds.length > 0 
+      ? await supabaseAPI.select('Users', { id: { in: organizerIds } })
+      : [];
+    
+    const organizersMap = new Map(organizers.map(u => [u.id, u]));
+
+    const enriched = events.map(e => ({
+      ...e,
+      organizer: organizersMap.get(e.organizer_id) ? {
+        id: organizersMap.get(e.organizer_id).id,
+        name: organizersMap.get(e.organizer_id).name,
+        email: organizersMap.get(e.organizer_id).email,
+        is_verified_organizer: organizersMap.get(e.organizer_id).is_verified_organizer || false,
+      } : null,
+    }));
+
+    res.json(enriched);
+  } catch (err) {
+    console.error('Erreur récupération événements pending:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+/**
+ * GET /api/moderation/stats
+ * Statistiques de modération
+ */
+router.get('/stats', authMiddleware, moderatorMiddleware, async (req, res) => {
+  try {
+    const allEvents = await supabaseAPI.select('Events', {}, { limit: 10000 });
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const reviews = await supabaseAPI.select('EventReviews', {}, { limit: 1000, order: 'created_at.desc' });
+    const todayReviews = reviews.filter(r => new Date(r.created_at) >= today);
+
+    res.json({
+      pending: allEvents.filter(e => e.status === 'pending_review').length,
+      approved_today: todayReviews.filter(r => r.action === 'approve').length,
+      rejected_today: todayReviews.filter(r => r.action === 'reject').length,
+    });
+  } catch (err) {
+    console.error('Erreur stats modération:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+/**
  * GET /api/moderation/events
  * Liste les événements en attente de modération
  */

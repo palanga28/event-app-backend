@@ -7,6 +7,132 @@ const { adminMiddleware } = require('../middlewares/role.middleware');
 console.log('✅ verification.routes chargé');
 
 // =============================================
+// ROUTES DASHBOARD WEB (simplifiées)
+// =============================================
+
+/**
+ * GET /api/verification/pending
+ * Liste les demandes en attente (pour dashboard web)
+ */
+router.get('/pending', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const verifications = await supabaseAPI.select(
+      'OrganizerVerifications',
+      { status: 'pending' },
+      { limit: 100, order: 'created_at.desc' }
+    );
+
+    // Récupérer les utilisateurs
+    const userIds = verifications.map(v => v.user_id);
+    const users = userIds.length > 0 
+      ? await supabaseAPI.select('Users', { id: { in: userIds } })
+      : [];
+    const usersMap = new Map(users.map(u => [u.id, u]));
+
+    const enriched = verifications.map(v => ({
+      ...v,
+      user: usersMap.get(v.user_id) ? {
+        id: usersMap.get(v.user_id).id,
+        name: usersMap.get(v.user_id).name,
+        email: usersMap.get(v.user_id).email,
+      } : null,
+    }));
+
+    res.json(enriched);
+  } catch (err) {
+    console.error('Erreur récupération vérifications pending:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+/**
+ * GET /api/verification/stats
+ * Statistiques des vérifications
+ */
+router.get('/stats', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const all = await supabaseAPI.select('OrganizerVerifications', {}, { limit: 10000 });
+    
+    res.json({
+      pending: all.filter(v => v.status === 'pending').length,
+      approved: all.filter(v => v.status === 'approved').length,
+      rejected: all.filter(v => v.status === 'rejected').length,
+    });
+  } catch (err) {
+    console.error('Erreur stats vérifications:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+/**
+ * POST /api/verification/:id/approve
+ * Approuver une demande (route simplifiée)
+ */
+router.post('/:id/approve', authMiddleware, adminMiddleware, async (req, res) => {
+  const verificationId = parseInt(req.params.id);
+  const adminId = req.user.id;
+
+  try {
+    const verifications = await supabaseAPI.select('OrganizerVerifications', { id: verificationId });
+    const verification = verifications[0];
+
+    if (!verification) {
+      return res.status(404).json({ message: 'Demande non trouvée' });
+    }
+
+    // Mettre à jour la vérification
+    await supabaseAPI.update('OrganizerVerifications', {
+      status: 'approved',
+      reviewed_by: adminId,
+      reviewed_at: new Date().toISOString(),
+    }, { id: verificationId });
+
+    // Mettre à jour l'utilisateur
+    await supabaseAPI.update('Users', {
+      is_verified_organizer: true,
+      can_sell_tickets: true,
+      verified_at: new Date().toISOString(),
+    }, { id: verification.user_id });
+
+    res.json({ message: 'Demande approuvée' });
+  } catch (err) {
+    console.error('Erreur approbation vérification:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+/**
+ * POST /api/verification/:id/reject
+ * Rejeter une demande (route simplifiée)
+ */
+router.post('/:id/reject', authMiddleware, adminMiddleware, async (req, res) => {
+  const verificationId = parseInt(req.params.id);
+  const adminId = req.user.id;
+  const { reason } = req.body;
+
+  try {
+    const verifications = await supabaseAPI.select('OrganizerVerifications', { id: verificationId });
+    const verification = verifications[0];
+
+    if (!verification) {
+      return res.status(404).json({ message: 'Demande non trouvée' });
+    }
+
+    await supabaseAPI.update('OrganizerVerifications', {
+      status: 'rejected',
+      reviewed_by: adminId,
+      reviewed_at: new Date().toISOString(),
+      rejection_reason: reason || 'Demande rejetée',
+    }, { id: verificationId });
+
+    res.json({ message: 'Demande rejetée' });
+  } catch (err) {
+    console.error('Erreur rejet vérification:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// =============================================
 // ROUTES UTILISATEUR (demande de vérification)
 // =============================================
 
