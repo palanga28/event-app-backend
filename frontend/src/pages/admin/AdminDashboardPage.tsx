@@ -23,7 +23,9 @@ import {
   ChevronRight,
   Activity,
   PieChart,
-  BarChart3
+  BarChart3,
+  ShieldCheck,
+  BadgeCheck
 } from 'lucide-react'
 
 type Stats = {
@@ -53,6 +55,8 @@ type CommissionStats = {
 const navItems = [
   { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/admin/stats', label: 'Statistiques', icon: BarChart3 },
+  { path: '/admin/moderation', label: 'Modération', icon: ShieldCheck },
+  { path: '/admin/verifications', label: 'Vérifications', icon: BadgeCheck },
   { path: '/admin/users', label: 'Utilisateurs', icon: Users },
   { path: '/admin/events', label: 'Événements', icon: Calendar },
   { path: '/admin/payments', label: 'Paiements', icon: CreditCard },
