@@ -10,7 +10,7 @@ import {
   Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Heart, ChevronLeft, ChevronRight, MapPin, Calendar } from 'lucide-react-native';
+import { Heart, ChevronLeft, ChevronRight, MapPin, Calendar, BadgeCheck } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 
@@ -28,6 +28,7 @@ type CarouselEvent = {
   organizer?: {
     id: number;
     name: string;
+    is_verified_organizer?: boolean;
   } | null;
 };
 
@@ -212,7 +213,12 @@ export function EventCarousel({ events, favoriteIds, onToggleFavorite }: Props) 
                       </Text>
                     </View>
                     <View>
-                      <Text style={styles.organizerName}>{event.organizer.name}</Text>
+                      <View style={styles.organizerNameRow}>
+                        <Text style={styles.organizerName}>{event.organizer.name}</Text>
+                        {event.organizer.is_verified_organizer && (
+                          <BadgeCheck size={14} color="#8b5cf6" />
+                        )}
+                      </View>
                       <Text style={styles.organizerLabel}>Organisateur</Text>
                     </View>
                   </View>
@@ -395,6 +401,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     color: colors.text.primary,
+  },
+  organizerNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   organizerName: {
     fontSize: 12,

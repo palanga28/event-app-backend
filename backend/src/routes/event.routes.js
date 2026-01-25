@@ -395,6 +395,8 @@ router.get('/', async (req, res) => {
               id: organizer.id,
               name: organizer.name,
               email: organizer.email,
+              avatar_url: organizer.avatar_url,
+              is_verified_organizer: organizer.is_verified_organizer || false,
             }
           : null,
       };
@@ -1327,7 +1329,9 @@ router.get('/:id', async (req, res) => {
       organizer: organizer ? {
         id: organizer.id,
         name: organizer.name,
-        email: organizer.email
+        email: organizer.email,
+        avatar_url: organizer.avatar_url,
+        is_verified_organizer: organizer.is_verified_organizer || false
       } : null,
       tags
     });

@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { User, Ticket, Heart, Calendar, Settings, LogOut, Plus, Bell, Camera, Save, X, Edit, Image as ImageIcon } from 'lucide-react-native';
+import { User, Ticket, Heart, Calendar, Settings, LogOut, Plus, Bell, Camera, Save, X, Edit, Image as ImageIcon, BadgeCheck } from 'lucide-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { colors } from '../theme/colors';
@@ -267,7 +267,12 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
           
-          <Text style={styles.userName}>{user?.name}</Text>
+          <View style={styles.nameContainer}>
+            <Text style={styles.userName}>{user?.name}</Text>
+            {user?.is_verified_organizer && (
+              <BadgeCheck size={20} color="#8b5cf6" style={styles.verifiedBadge} />
+            )}
+          </View>
           <Text style={styles.userEmail}>{user?.email}</Text>
           
           {/* Stats Section */}
@@ -734,5 +739,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.text.muted,
+  },
+  nameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  verifiedBadge: {
+    marginLeft: 4,
   },
 });

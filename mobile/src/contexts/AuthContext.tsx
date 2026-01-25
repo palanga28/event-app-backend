@@ -10,6 +10,9 @@ type User = {
   avatar_url?: string;
   bio?: string;
   role: 'user' | 'moderator' | 'admin';
+  is_verified_organizer?: boolean;
+  can_sell_tickets?: boolean;
+  verified_at?: string;
 };
 
 type AuthContextType = {

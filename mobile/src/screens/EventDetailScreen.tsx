@@ -20,7 +20,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ExpoCalendar from 'expo-calendar';
-import { Calendar, MapPin, Clock, User, Heart, Ticket, ArrowLeft, Tag, Plus, X, Flag, DollarSign, BarChart3, Share2, CalendarPlus, Bell } from 'lucide-react-native';
+import { Calendar, MapPin, Clock, User, Heart, Ticket, ArrowLeft, Tag, Plus, X, Flag, DollarSign, BarChart3, Share2, CalendarPlus, Bell, BadgeCheck } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { api } from '../lib/api';
 import { colors } from '../theme/colors';
@@ -59,6 +59,7 @@ type Event = {
     id: number;
     name: string;
     avatar_url?: string;
+    is_verified_organizer?: boolean;
   };
   organizer_id: number;
   tags?: Tag[];
@@ -629,7 +630,12 @@ export default function EventDetailScreen() {
             />
             <View>
               <Text style={styles.organizerLabel}>Organisé par</Text>
-              <Text style={styles.organizerName}>{event.organizer.name}</Text>
+              <View style={styles.organizerNameRow}>
+                <Text style={styles.organizerName}>{event.organizer.name}</Text>
+                {event.organizer.is_verified_organizer && (
+                  <BadgeCheck size={16} color="#8b5cf6" />
+                )}
+              </View>
             </View>
           </TouchableOpacity>
 
@@ -1126,6 +1132,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.text.primary,
+  },
+  organizerNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   infoCards: {
     flexDirection: 'row',
