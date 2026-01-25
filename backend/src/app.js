@@ -123,6 +123,10 @@ app.use('/api/verification', verificationRoutes);
 const moderationRoutes = require('./routes/moderation.routes');
 app.use('/api/moderation', moderationRoutes);
 
+// Ticket validation routes (signature cryptographique)
+const ticketValidationRoutes = require('./routes/ticket-validation.routes');
+app.use('/api/tickets', ticketValidationRoutes);
+
 // Health check étendu pour production
 app.get('/health', async (req, res) => {
   const health = {
