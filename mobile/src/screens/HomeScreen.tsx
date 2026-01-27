@@ -58,11 +58,30 @@ export default function HomeScreen() {
   const [imageIndexes, setImageIndexes] = useState<{ [key: number]: number }>({});
   const [isOffline, setIsOffline] = useState(false);
   const [isFromCache, setIsFromCache] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const EVENTS_PER_PAGE = 12;
 
   useEffect(() => {
     loadEvents();
+    loadUnreadNotificationsCount();
   }, []);
+
+  // Recharger le compteur quand l'écran redevient actif
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadUnreadNotificationsCount();
+    });
+    return unsubscribe;
+  }, [navigation]);
+
+  async function loadUnreadNotificationsCount() {
+    try {
+      const response = await api.get('/api/notifications/unread-count');
+      setUnreadNotifications(response.data.unread || response.data.count || 0);
+    } catch (error) {
+      // Silently fail - not critical
+    }
+  }
 
   // Auto-rotate images for all events every 10 seconds
   useEffect(() => {
@@ -359,6 +378,13 @@ export default function HomeScreen() {
               onPress={() => navigation.navigate('Notifications')}
             >
               <Bell size={20} color={colors.text.primary} />
+              {unreadNotifications > 0 && (
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.notificationBadgeText}>
+                    {unreadNotifications > 99 ? '99+' : unreadNotifications}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.iconButton}
@@ -495,6 +521,24 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#ef4444',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  notificationBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: 'bold',
   },
   searchButton: {
     width: 44,

@@ -693,6 +693,36 @@ router.post('/:id/comments', authMiddleware, async (req, res) => {
       console.warn('Warn: parsing tags/mentions failed on comment create', e?.message || e);
     }
 
+    // Notifier l'organisateur de l'événement (si ce n'est pas lui qui commente)
+    try {
+      const events = await supabaseAPI.select('Events', { id: eventId });
+      const event = events[0];
+      if (event && event.organizer_id && event.organizer_id !== req.user.id) {
+        // Créer notification en base
+        await supabaseAPI.insert('Notifications', {
+          user_id: event.organizer_id,
+          type: 'event_comment',
+          title: '💬 Nouveau commentaire',
+          message: `${req.user.name || 'Quelqu\'un'} a commenté votre événement "${event.title}"`,
+          data: JSON.stringify({ eventId, commentId: comment.id, commenterId: req.user.id }),
+          created_at: new Date().toISOString()
+        });
+
+        // Envoyer push notification
+        const PushNotificationService = require('../services/push-notification.service');
+        await PushNotificationService.sendNotification(
+          [event.organizer_id],
+          {
+            title: '💬 Nouveau commentaire',
+            body: `${req.user.name || 'Quelqu\'un'} a commenté votre événement "${event.title}"`,
+            data: { type: 'event_comment', eventId, screen: 'EventDetail' }
+          }
+        );
+      }
+    } catch (notifErr) {
+      console.error('Erreur notification commentaire:', notifErr);
+    }
+
     res.status(201).json({ message: 'Commentaire ajouté', comment });
   } catch (err) {
     console.error('Erreur create comment:', err);

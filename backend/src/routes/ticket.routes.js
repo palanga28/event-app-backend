@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { supabaseAPI } = require('../config/api');
 const authMiddleware = require('../middlewares/auth.middleware');
+const PushNotificationService = require('../services/push-notification.service');
 
 console.log('✅ ticket.routes chargé');
 
@@ -128,6 +129,37 @@ router.post('/', authMiddleware, async (req, res) => {
     await supabaseAPI.update('TicketTypes', {
       available_quantity: ticketType.available_quantity - quantityNum
     }, { id: ticketTypeIdNum });
+
+    // Notifier l'organisateur de la vente
+    try {
+      const events = await supabaseAPI.select('Events', { id: ticketType.event_id });
+      const event = events[0];
+      if (event && event.organizer_id) {
+        const totalPrice = ticketType.price * quantityNum;
+        
+        // Créer notification en base
+        await supabaseAPI.insert('Notifications', {
+          user_id: event.organizer_id,
+          type: 'ticket_sold',
+          title: '🎫 Nouvelle vente !',
+          message: `${user.name || 'Quelqu\'un'} a acheté ${quantityNum} ticket(s) pour "${event.title}" (${totalPrice} FCFA)`,
+          data: JSON.stringify({ eventId: event.id, ticketId: ticket.id, buyerId: user.id, amount: totalPrice }),
+          created_at: new Date().toISOString()
+        });
+
+        // Envoyer push notification
+        await PushNotificationService.sendNotification(
+          [event.organizer_id],
+          {
+            title: '🎫 Nouvelle vente !',
+            body: `${user.name || 'Quelqu\'un'} a acheté ${quantityNum} ticket(s) pour "${event.title}"`,
+            data: { type: 'ticket_sold', eventId: event.id, screen: 'MyEvents' }
+          }
+        );
+      }
+    } catch (notifErr) {
+      console.error('Erreur notification vente:', notifErr);
+    }
 
     res.status(201).json({ message: 'Ticket acheté avec succès', ticket });
   } catch (err) {

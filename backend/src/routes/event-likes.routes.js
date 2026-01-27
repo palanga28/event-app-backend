@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { supabaseAPI } = require('../config/api');
 const authMiddleware = require('../middlewares/auth.middleware');
+const PushNotificationService = require('../services/push-notification.service');
 
 console.log('✅ event-likes.routes chargé');
 
@@ -51,6 +52,34 @@ router.post('/:eventId/toggle', authMiddleware, async (req, res) => {
 
       // Compter les likes
       const allLikes = await supabaseAPI.select('EventLikes', { event_id: eventId });
+
+      // Notifier l'organisateur (si ce n'est pas lui-même qui like)
+      const event = events[0];
+      if (event.organizer_id && event.organizer_id !== req.user.id) {
+        try {
+          // Créer notification en base
+          await supabaseAPI.insert('Notifications', {
+            user_id: event.organizer_id,
+            type: 'event_like',
+            title: '❤️ Nouveau like',
+            message: `${req.user.name || 'Quelqu\'un'} a aimé votre événement "${event.title}"`,
+            data: JSON.stringify({ eventId, likerId: req.user.id }),
+            created_at: new Date().toISOString()
+          });
+
+          // Envoyer push notification
+          await PushNotificationService.sendNotification(
+            [event.organizer_id],
+            {
+              title: '❤️ Nouveau like',
+              body: `${req.user.name || 'Quelqu\'un'} a aimé votre événement "${event.title}"`,
+              data: { type: 'event_like', eventId, screen: 'EventDetail' }
+            }
+          );
+        } catch (notifErr) {
+          console.error('Erreur notification like:', notifErr);
+        }
+      }
 
       return res.json({ 
         message: 'Like ajouté', 
