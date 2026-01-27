@@ -10,7 +10,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Bell, Check, Calendar, MessageSquare, Users, ArrowLeft } from 'lucide-react-native';
+import { Bell, Check, Calendar, MessageSquare, Users, ArrowLeft, Heart, Ticket, DollarSign } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { api } from '../lib/api';
 import { colors } from '../theme/colors';
@@ -85,12 +85,55 @@ export default function NotificationsScreen() {
       markAsRead(notification.id);
     }
 
-    // Naviguer vers la source si disponible
-    const sourceType = notification.data?.source_type;
-    const sourceId = notification.data?.source_id;
+    // Parser les données si c'est une string JSON
+    let data = notification.data;
+    if (typeof data === 'string') {
+      try {
+        data = JSON.parse(data);
+      } catch {
+        data = {};
+      }
+    }
 
-    if (sourceType === 'event' && sourceId) {
-      navigation.navigate('EventDetail', { eventId: sourceId });
+    // Naviguer selon le type de notification
+    const type = notification.type;
+    const eventId = data?.eventId || data?.event_id || data?.source_id;
+    const screen = data?.screen;
+
+    // Navigation prioritaire selon le screen spécifié dans data
+    if (screen === 'EventDetail' && eventId) {
+      navigation.navigate('EventDetail', { eventId });
+      return;
+    }
+
+    // Navigation selon le type de notification
+    switch (type) {
+      case 'mention':
+      case 'event_comment':
+      case 'event_like':
+        if (eventId) {
+          navigation.navigate('EventDetail', { eventId });
+        }
+        break;
+      case 'ticket_sold':
+        navigation.navigate('MyEvents');
+        break;
+      case 'event_reminder':
+        if (eventId) {
+          navigation.navigate('EventDetail', { eventId });
+        }
+        break;
+      case 'follow':
+        if (data?.follower_id) {
+          navigation.navigate('UserProfile', { userId: data.follower_id });
+        }
+        break;
+      default:
+        // Pour les autres types, essayer de naviguer vers l'événement si disponible
+        if (eventId) {
+          navigation.navigate('EventDetail', { eventId });
+        }
+        break;
     }
   }
 
@@ -98,9 +141,18 @@ export default function NotificationsScreen() {
     switch (type) {
       case 'mention':
         return MessageSquare;
+      case 'event_comment':
+        return MessageSquare;
+      case 'event_like':
+        return Heart;
+      case 'ticket_sold':
+        return DollarSign;
+      case 'ticket_purchase':
+        return Ticket;
       case 'follow':
         return Users;
       case 'event':
+      case 'event_reminder':
         return Calendar;
       default:
         return Bell;

@@ -143,9 +143,45 @@ async function resolveMentionedUsersByName(usernames) {
   return out;
 }
 
-async function createMentionsAndNotifications({ sourceType, sourceId, createdBy, mentionedUsers }) {
+async function createMentionsAndNotifications({ sourceType, sourceId, createdBy, mentionedUsers, eventId }) {
   if (!sourceType || !Number.isFinite(sourceId)) return;
   if (!Array.isArray(mentionedUsers) || mentionedUsers.length === 0) return;
+
+  // Récupérer le nom de la personne qui mentionne
+  let creatorName = 'Quelqu\'un';
+  if (Number.isFinite(createdBy)) {
+    try {
+      const creators = await supabaseAPI.select('Users', { id: createdBy });
+      if (creators[0]?.name) {
+        creatorName = creators[0].name;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // Déterminer le contexte pour le message
+  let contextMessage = '';
+  let screen = 'Notifications';
+  let navigationData = { sourceType, sourceId };
+
+  if (sourceType === 'comment') {
+    contextMessage = 'dans un commentaire';
+    screen = 'EventDetail';
+    // Récupérer l'eventId du commentaire
+    try {
+      const comments = await supabaseAPI.select('Comments', { id: sourceId });
+      if (comments[0]?.event_id) {
+        navigationData.eventId = comments[0].event_id;
+      }
+    } catch {
+      // ignore
+    }
+  } else if (sourceType === 'event') {
+    contextMessage = 'dans un événement';
+    screen = 'EventDetail';
+    navigationData.eventId = sourceId;
+  }
 
   for (const u of mentionedUsers) {
     const mentionedUserId = u?.id;
@@ -168,17 +204,37 @@ async function createMentionsAndNotifications({ sourceType, sourceId, createdBy,
       await supabaseAPI.insert('Notifications', {
         user_id: mentionedUserId,
         type: 'mention',
-        title: 'Vous avez été mentionné',
-        message: 'Quelqu\'un vous a mentionné.',
-        data: {
+        title: '📢 Vous avez été mentionné',
+        message: `${creatorName} vous a mentionné ${contextMessage}`,
+        data: JSON.stringify({
           source_type: sourceType,
           source_id: sourceId,
           by_user_id: Number.isFinite(createdBy) ? createdBy : null,
-        },
+          by_user_name: creatorName,
+          screen: screen,
+          eventId: navigationData.eventId || null,
+        }),
         created_at: new Date().toISOString(),
       });
-    } catch {
-      // ignore
+
+      // Envoyer push notification
+      const PushNotificationService = require('../services/push-notification.service');
+      await PushNotificationService.sendNotification(
+        [mentionedUserId],
+        {
+          title: '📢 Vous avez été mentionné',
+          body: `${creatorName} vous a mentionné ${contextMessage}`,
+          data: { 
+            type: 'mention', 
+            screen: screen,
+            eventId: navigationData.eventId || null,
+            sourceType,
+            sourceId
+          }
+        }
+      );
+    } catch (err) {
+      console.error('Erreur notification mention:', err);
     }
   }
 }
