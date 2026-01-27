@@ -365,36 +365,6 @@ export default function HomeScreen() {
       
       {/* Bannière mode hors ligne */}
       <OfflineBanner isFromCache={isFromCache} />
-      
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>Événements</Text>
-            <Text style={styles.headerSubtitle}>Découvre les événements près de toi</Text>
-          </View>
-          <View style={styles.headerActions}>
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() => navigation.navigate('Notifications')}
-            >
-              <Bell size={20} color={colors.text.primary} />
-              {unreadNotifications > 0 && (
-                <View style={styles.notificationBadge}>
-                  <Text style={styles.notificationBadgeText}>
-                    {unreadNotifications > 99 ? '99+' : unreadNotifications}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() => navigation.navigate('SearchEvents')}
-            >
-              <Search size={20} color={colors.text.primary} />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
 
       <FlatList
         data={events}
@@ -413,6 +383,36 @@ export default function HomeScreen() {
         }
         ListHeaderComponent={
           <>
+            {/* Header qui scroll avec la liste */}
+            <View style={styles.header}>
+              <View style={styles.headerTop}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.headerTitle}>Événements</Text>
+                  <Text style={styles.headerSubtitle}>Découvre les événements près de toi</Text>
+                </View>
+                <View style={styles.headerActions}>
+                  <TouchableOpacity
+                    style={styles.iconButton}
+                    onPress={() => navigation.navigate('Notifications')}
+                  >
+                    <Bell size={20} color={colors.text.primary} />
+                    {unreadNotifications > 0 && (
+                      <View style={styles.notificationBadge}>
+                        <Text style={styles.notificationBadgeText}>
+                          {unreadNotifications > 99 ? '99+' : unreadNotifications}
+                        </Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.iconButton}
+                    onPress={() => navigation.navigate('SearchEvents')}
+                  >
+                    <Search size={20} color={colors.text.primary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
             <StoriesBar />
             {events.length > 0 ? (
               <EventCarousel
