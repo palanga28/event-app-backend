@@ -327,8 +327,7 @@ export default function EventDetailScreen() {
 
   // Générer le lien de partage (deep link)
   const getEventShareUrl = () => {
-    // URL de production - à remplacer par votre domaine
-    const baseUrl = 'https://eventapp.com';
+    const baseUrl = 'https://ampia-events.netlify.app';
     return `${baseUrl}/event/${eventId}`;
   };
 
