@@ -324,63 +324,63 @@ router.post('/', authMiddleware, async (req, res) => {
       created_at: new Date().toISOString()
     });
 
-    // Ajouter une entrée d'activité pour les modérateurs
-    try {
-      await supabaseAPI.insert('AuditLogs', {
-        actor_id: user.id,
-        action: 'event_published',
-        entity_type: 'event',
-        entity_id: event.id,
-        metadata: {
-          title: title.trim(),
-          description: description || '',
-          location: location || '',
-          start_date: start.toISOString()
-        },
-        ip: req.ip,
-        created_at: new Date().toISOString()
-      });
-    } catch (logErr) {
-      console.warn('Warn: failed to create audit log for event publication:', logErr?.message || logErr);
-    }
-
-    try {
-      const parsed = extractTagsAndMentions(description || '');
-      await setEventTagsFromNames(event.id, parsed.tags);
-      const mentioned = await resolveMentionedUsersByName(parsed.mentions);
-      await createMentionsAndNotifications({
-        sourceType: 'event',
-        sourceId: event.id,
-        createdBy: user.id,
-        mentionedUsers: mentioned,
-      });
-    } catch (e) {
-      console.warn('Warn: parsing tags/mentions failed on event create', e?.message || e);
-    }
-
-    // Générer un QR code pour l'organisateur
-    try {
-      const QRCodeService = require('../services/qrcode.service');
-      const { code, qrCode } = await QRCodeService.generateTicketQRCode(
-        event.id, // Utiliser l'ID de l'événement comme ID de ticket
-        user.id,
-        event.id
-      );
-      
-      // Stocker le QR code de l'organisateur dans l'événement
-      await supabaseAPI.update('Events', event.id, {
-        organizer_qr_code: code,
-        organizer_qr_code_image: qrCode,
-        updated_at: new Date().toISOString()
-      });
-      
-      event.organizer_qr_code = code;
-      event.organizer_qr_code_image = qrCode;
-    } catch (qrErr) {
-      console.warn('Warn: failed to generate organizer QR code:', qrErr?.message || qrErr);
-    }
-
+    // Répondre immédiatement au client
     res.status(201).json({ message: 'Événement créé', event });
+
+    // Opérations asynchrones en arrière-plan (ne bloquent pas la réponse)
+    setImmediate(async () => {
+      // Ajouter une entrée d'activité pour les modérateurs
+      try {
+        await supabaseAPI.insert('AuditLogs', {
+          actor_id: user.id,
+          action: 'event_published',
+          entity_type: 'event',
+          entity_id: event.id,
+          metadata: {
+            title: title.trim(),
+            description: description || '',
+            location: location || '',
+            start_date: start.toISOString()
+          },
+          ip: req.ip,
+          created_at: new Date().toISOString()
+        });
+      } catch (logErr) {
+        console.warn('Warn: failed to create audit log for event publication:', logErr?.message || logErr);
+      }
+
+      try {
+        const parsed = extractTagsAndMentions(description || '');
+        await setEventTagsFromNames(event.id, parsed.tags);
+        const mentioned = await resolveMentionedUsersByName(parsed.mentions);
+        await createMentionsAndNotifications({
+          sourceType: 'event',
+          sourceId: event.id,
+          createdBy: user.id,
+          mentionedUsers: mentioned,
+        });
+      } catch (e) {
+        console.warn('Warn: parsing tags/mentions failed on event create', e?.message || e);
+      }
+
+      // Générer un QR code pour l'organisateur
+      try {
+        const QRCodeService = require('../services/qrcode.service');
+        const { code, qrCode } = await QRCodeService.generateTicketQRCode(
+          event.id,
+          user.id,
+          event.id
+        );
+        
+        await supabaseAPI.update('Events', event.id, {
+          organizer_qr_code: code,
+          organizer_qr_code_image: qrCode,
+          updated_at: new Date().toISOString()
+        });
+      } catch (qrErr) {
+        console.warn('Warn: failed to generate organizer QR code:', qrErr?.message || qrErr);
+      }
+    });
   } catch (err) {
     console.error('Erreur création événement:', err);
     res.status(500).json({ message: 'Erreur serveur' });
