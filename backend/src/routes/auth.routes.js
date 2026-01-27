@@ -82,6 +82,8 @@ router.post('/register', async (req, res) => {
       return res.status(409).json({ message: 'Email déjà utilisé' });
     }
 
+    if (!assertJwtEnv(res)) return;
+
     const hashed = await bcrypt.hash(password, 10);
 
     const user = await supabaseAPI.insert('Users', {
@@ -93,8 +95,38 @@ router.post('/register', async (req, res) => {
       created_at: new Date().toISOString()
     });
 
+    // Générer les tokens automatiquement après inscription
+    const accessToken = jwt.sign(
+      { id: user.id, email: user.email, role: user.role || 'user' },
+      process.env.JWT_ACCESS_SECRET,
+      { expiresIn: process.env.ACCESS_TOKEN_EXPIRES || '15m' }
+    );
+
+    const refreshToken = jwt.sign(
+      { id: user.id },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: process.env.REFRESH_TOKEN_EXPIRES || '7d' }
+    );
+
+    const expiresAt = getTokenExpiryDateFromJwt(refreshToken);
+    if (expiresAt) {
+      await supabaseAPI.insert('RefreshTokens', {
+        token: refreshToken,
+        user_id: user.id,
+        expires_at: expiresAt.toISOString(),
+        revoked: false,
+        created_by_ip: req.ip,
+        created_at: new Date().toISOString()
+      });
+    }
+
     const { password: _, ...userWithoutPassword } = user;
-    return res.status(201).json({ message: 'Utilisateur créé avec succès', user: userWithoutPassword });
+    return res.status(201).json({ 
+      message: 'Utilisateur créé avec succès', 
+      user: userWithoutPassword,
+      accessToken,
+      refreshToken
+    });
   } catch (err) {
     console.error('Erreur inscription:', err);
     return res.status(500).json({ message: 'Erreur serveur' });
