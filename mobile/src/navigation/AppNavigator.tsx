@@ -14,7 +14,7 @@ import { useAuth } from '../contexts/AuthContext';
 const linking: LinkingOptions<any> = {
   prefixes: [
     'ampia://',
-    'https://ampia-event-admin.netlify.app',
+    'https://ampia-events.netlify.app',
   ],
   config: {
     screens: {

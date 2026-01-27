@@ -38,7 +38,7 @@
             },
             {
               "scheme": "https",
-              "host": "ampia-event-admin.netlify.app",
+              "host": "ampia-events.netlify.app",
               "pathPrefix": "/event"
             }
           ],
