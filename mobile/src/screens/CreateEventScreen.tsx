@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import logger from '../lib/logger';
 import {
   View,
@@ -33,6 +34,14 @@ export default function CreateEventScreen() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // États pour les DateTimePickers
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
+  const [startDateObj, setStartDateObj] = useState<Date | null>(null);
+  const [endDateObj, setEndDateObj] = useState<Date | null>(null);
 
   async function pickImages() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -73,6 +82,74 @@ export default function CreateEventScreen() {
 
   function removePhoto(index: number) {
     setPhotos(photos.filter((_, i) => i !== index));
+  }
+
+  // Formater la date pour l'affichage
+  function formatDateDisplay(date: Date | null): string {
+    if (!date) return '';
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
+  }
+
+  // Formater la date pour l'API (ISO format)
+  function formatDateForAPI(date: Date | null): string {
+    if (!date) return '';
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}`;
+  }
+
+  // Gestionnaires pour le DateTimePicker de début
+  function onStartDateChange(event: any, selectedDate?: Date) {
+    setShowStartDatePicker(false);
+    if (selectedDate) {
+      const newDate = startDateObj ? new Date(startDateObj) : new Date();
+      newDate.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+      setStartDateObj(newDate);
+      setStartDate(formatDateForAPI(newDate));
+      // Afficher le time picker après la sélection de la date
+      setTimeout(() => setShowStartTimePicker(true), 300);
+    }
+  }
+
+  function onStartTimeChange(event: any, selectedTime?: Date) {
+    setShowStartTimePicker(false);
+    if (selectedTime && startDateObj) {
+      const newDate = new Date(startDateObj);
+      newDate.setHours(selectedTime.getHours(), selectedTime.getMinutes());
+      setStartDateObj(newDate);
+      setStartDate(formatDateForAPI(newDate));
+    }
+  }
+
+  // Gestionnaires pour le DateTimePicker de fin
+  function onEndDateChange(event: any, selectedDate?: Date) {
+    setShowEndDatePicker(false);
+    if (selectedDate) {
+      const newDate = endDateObj ? new Date(endDateObj) : new Date();
+      newDate.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+      setEndDateObj(newDate);
+      setEndDate(formatDateForAPI(newDate));
+      // Afficher le time picker après la sélection de la date
+      setTimeout(() => setShowEndTimePicker(true), 300);
+    }
+  }
+
+  function onEndTimeChange(event: any, selectedTime?: Date) {
+    setShowEndTimePicker(false);
+    if (selectedTime && endDateObj) {
+      const newDate = new Date(endDateObj);
+      newDate.setHours(selectedTime.getHours(), selectedTime.getMinutes());
+      setEndDateObj(newDate);
+      setEndDate(formatDateForAPI(newDate));
+    }
   }
 
   async function handleSubmit() {
@@ -274,33 +351,69 @@ export default function CreateEventScreen() {
           <View style={styles.dateRow}>
             <View style={styles.dateInput}>
               <Text style={styles.dateLabel}>Début</Text>
-              <View style={styles.inputContainer}>
-                <Calendar size={16} color={colors.text.muted} style={styles.inputIcon} />
-                <TextInput
-                  style={[styles.input, styles.dateField]}
-                  placeholder="YYYY-MM-DD HH:MM"
-                  placeholderTextColor={colors.text.muted}
-                  value={startDate}
-                  onChangeText={setStartDate}
-                />
-              </View>
+              <TouchableOpacity 
+                style={styles.datePickerButton}
+                onPress={() => setShowStartDatePicker(true)}
+              >
+                <Calendar size={16} color={colors.text.muted} />
+                <Text style={[styles.datePickerText, !startDateObj && styles.datePickerPlaceholder]}>
+                  {startDateObj ? formatDateDisplay(startDateObj) : 'Sélectionner'}
+                </Text>
+              </TouchableOpacity>
             </View>
             <View style={styles.dateInput}>
               <Text style={styles.dateLabel}>Fin</Text>
-              <View style={styles.inputContainer}>
-                <Calendar size={16} color={colors.text.muted} style={styles.inputIcon} />
-                <TextInput
-                  style={[styles.input, styles.dateField]}
-                  placeholder="YYYY-MM-DD HH:MM"
-                  placeholderTextColor={colors.text.muted}
-                  value={endDate}
-                  onChangeText={setEndDate}
-                />
-              </View>
+              <TouchableOpacity 
+                style={styles.datePickerButton}
+                onPress={() => setShowEndDatePicker(true)}
+              >
+                <Calendar size={16} color={colors.text.muted} />
+                <Text style={[styles.datePickerText, !endDateObj && styles.datePickerPlaceholder]}>
+                  {endDateObj ? formatDateDisplay(endDateObj) : 'Sélectionner'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
-          <Text style={styles.hint}>Format: 2026-01-15 14:00</Text>
+          <Text style={styles.hint}>Appuyez pour ouvrir le calendrier</Text>
         </View>
+
+        {/* DateTimePickers */}
+        {showStartDatePicker && (
+          <DateTimePicker
+            value={startDateObj || new Date()}
+            mode="date"
+            display="default"
+            onChange={onStartDateChange}
+            minimumDate={new Date()}
+          />
+        )}
+        {showStartTimePicker && (
+          <DateTimePicker
+            value={startDateObj || new Date()}
+            mode="time"
+            display="default"
+            onChange={onStartTimeChange}
+            is24Hour={true}
+          />
+        )}
+        {showEndDatePicker && (
+          <DateTimePicker
+            value={endDateObj || startDateObj || new Date()}
+            mode="date"
+            display="default"
+            onChange={onEndDateChange}
+            minimumDate={startDateObj || new Date()}
+          />
+        )}
+        {showEndTimePicker && (
+          <DateTimePicker
+            value={endDateObj || new Date()}
+            mode="time"
+            display="default"
+            onChange={onEndTimeChange}
+            is24Hour={true}
+          />
+        )}
 
         {/* Capacity */}
         <View style={styles.section}>
@@ -453,6 +566,25 @@ const styles = StyleSheet.create({
   },
   dateField: {
     fontSize: 14,
+  },
+  datePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background.card,
+    borderWidth: 1,
+    borderColor: colors.border.light,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 10,
+  },
+  datePickerText: {
+    color: colors.text.primary,
+    fontSize: 14,
+    flex: 1,
+  },
+  datePickerPlaceholder: {
+    color: colors.text.muted,
   },
   hint: {
     fontSize: 12,
