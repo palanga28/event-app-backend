@@ -8,7 +8,7 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "owner": "ampia-events",
-    "scheme": "ampia-events",
+    "scheme": "ampia",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -34,11 +34,11 @@
           "autoVerify": true,
           "data": [
             {
-              "scheme": "ampia-events"
+              "scheme": "ampia"
             },
             {
               "scheme": "https",
-              "host": "eventapp.com",
+              "host": "ampia-event-admin.netlify.app",
               "pathPrefix": "/event"
             }
           ],

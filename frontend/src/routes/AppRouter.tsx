@@ -11,6 +11,7 @@ import UserProfilePage from '../pages/UserProfilePage'
 import SearchUsersPage from '../pages/SearchUsersPage'
 import SearchEventsPage from '../pages/SearchEventsPage'
 import EventDetailPage from '../pages/EventDetailPage'
+import EventSharePage from '../pages/EventSharePage'
 import CreateEventPage from '../pages/CreateEventPage'
 import MyEventsPage from '../pages/MyEventsPage'
 import MyTicketsPage from '../pages/MyTicketsPage'
@@ -72,6 +73,10 @@ export default function AppRouter() {
             {
               path: 'events/:id',
               element: <EventDetailPage />,
+            },
+            {
+              path: 'event/:id',
+              element: <EventSharePage />,
             },
             {
               path: 'users/:id',

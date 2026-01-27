@@ -13,9 +13,8 @@ import { useAuth } from '../contexts/AuthContext';
 // Configuration du deep linking
 const linking: LinkingOptions<any> = {
   prefixes: [
-    'ampia-events://',
-    'https://eventapp.com',
-    'https://ampia-events.com',
+    'ampia://',
+    'https://ampia-event-admin.netlify.app',
   ],
   config: {
     screens: {
@@ -27,7 +26,12 @@ const linking: LinkingOptions<any> = {
           ProfileTab: 'profile',
         },
       },
-      EventDetail: 'event/:eventId',
+      EventDetail: {
+        path: 'event/:eventId',
+        parse: {
+          eventId: (eventId: string) => parseInt(eventId, 10),
+        },
+      },
       UserProfile: 'user/:userId',
       Payment: 'payment',
       Login: 'login',
