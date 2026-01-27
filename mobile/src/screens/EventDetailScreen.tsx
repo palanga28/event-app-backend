@@ -472,35 +472,91 @@ export default function EventDetailScreen() {
       return;
     }
 
+    // Initialiser les notifications si pas encore fait
+    const token = await notificationService.initialize();
+    
+    if (!token) {
+      Alert.alert(
+        '⚠️ Notifications désactivées',
+        'Veuillez activer les notifications dans les paramètres de votre téléphone pour recevoir des rappels.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     Alert.alert(
       '🔔 Définir un rappel',
       'Quand souhaitez-vous être rappelé ?',
       [
         {
+          text: 'Test (5 sec)',
+          onPress: async () => {
+            try {
+              await notificationService.scheduleLocalNotification(
+                '🔔 Test de rappel',
+                `Ceci est un test pour ${event.title}`,
+                5
+              );
+              Alert.alert('✅ Test envoyé', 'Vous devriez recevoir une notification dans 5 secondes.');
+            } catch (error) {
+              logger.error('Erreur test:', error);
+              Alert.alert('❌ Erreur', 'Le test a échoué.');
+            }
+          },
+        },
+        {
           text: '1 heure avant',
           onPress: async () => {
-            const id = await notificationService.scheduleEventReminder(
-              event.id,
-              event.title,
-              eventDate,
-              60
-            );
-            if (id) {
-              Alert.alert('✅ Rappel activé', 'Vous serez notifié 1 heure avant l\'événement.');
+            try {
+              // Vérifier que le rappel n'est pas trop proche
+              const reminderTime = new Date(eventDate.getTime() - 60 * 60 * 1000);
+              if (reminderTime <= new Date()) {
+                Alert.alert('⚠️ Trop tard', 'L\'événement commence dans moins d\'une heure.');
+                return;
+              }
+              
+              const id = await notificationService.scheduleEventReminder(
+                event.id,
+                event.title,
+                eventDate,
+                60
+              );
+              if (id) {
+                Alert.alert('✅ Rappel activé', `Vous serez notifié 1 heure avant l'événement.\n\nDate du rappel: ${reminderTime.toLocaleString('fr-FR')}`);
+              } else {
+                Alert.alert('❌ Erreur', 'Impossible de planifier le rappel. Vérifiez les permissions de notifications.');
+              }
+            } catch (error) {
+              logger.error('Erreur rappel:', error);
+              Alert.alert('❌ Erreur', 'Une erreur est survenue lors de la planification du rappel.');
             }
           },
         },
         {
           text: '24 heures avant',
           onPress: async () => {
-            const id = await notificationService.scheduleEventReminder(
-              event.id,
-              event.title,
-              eventDate,
-              24 * 60
-            );
-            if (id) {
-              Alert.alert('✅ Rappel activé', 'Vous serez notifié 24 heures avant l\'événement.');
+            try {
+              // Vérifier que le rappel n'est pas trop proche
+              const reminderTime = new Date(eventDate.getTime() - 24 * 60 * 60 * 1000);
+              if (reminderTime <= new Date()) {
+                Alert.alert('⚠️ Trop tard', 'L\'événement commence dans moins de 24 heures. Choisissez "1 heure avant".');
+                return;
+              }
+              
+              const id = await notificationService.scheduleEventReminder(
+                event.id,
+                event.title,
+                eventDate,
+                24 * 60
+              );
+              if (id) {
+                Alert.alert('✅ Rappel activé', `Vous serez notifié 24 heures avant l'événement.\n\nDate du rappel: ${reminderTime.toLocaleString('fr-FR')}`);
+              } else {
+                Alert.alert('❌ Erreur', 'Impossible de planifier le rappel. Vérifiez les permissions de notifications.');
+              }
+            } catch (error) {
+              logger.error('Erreur rappel:', error);
+              Alert.alert('❌ Erreur', 'Une erreur est survenue lors de la planification du rappel.');
             }
           },
         },
