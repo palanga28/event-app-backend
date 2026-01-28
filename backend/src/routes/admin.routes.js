@@ -1347,4 +1347,101 @@ router.get('/payout/:id', authMiddleware, adminMiddleware, async (req, res) => {
   }
 });
 
+// =========================
+// DEMANDES DE CARROUSEL
+// =========================
+router.get('/carousel-requests', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    // Récupérer les événements avec demande de carrousel ou déjà dans le carrousel
+    const events = await supabaseAPI.select(
+      'Events',
+      {},
+      { limit: 100, order: 'created_at.desc' }
+    );
+
+    // Filtrer: carousel_requested = true OU in_carousel = true
+    const filtered = events.filter(e => e.carousel_requested === true || e.in_carousel === true);
+
+    // Récupérer les organisateurs
+    const organizerIds = [...new Set(filtered.map(e => e.organizer_id).filter(Boolean))];
+    const organizers = organizerIds.length
+      ? await supabaseAPI.select('Users', { id: { in: organizerIds } })
+      : [];
+    const organizerMap = new Map(organizers.map(u => [u.id, u]));
+
+    const result = filtered.map(e => ({
+      id: e.id,
+      title: e.title,
+      start_date: e.start_date,
+      cover_image: e.cover_image,
+      carousel_requested: e.carousel_requested || false,
+      in_carousel: e.in_carousel || false,
+      organizer: organizerMap.get(e.organizer_id)
+        ? {
+            id: organizerMap.get(e.organizer_id).id,
+            name: organizerMap.get(e.organizer_id).name,
+            email: organizerMap.get(e.organizer_id).email,
+          }
+        : null,
+    }));
+
+    res.json(result);
+  } catch (err) {
+    console.error('❌ Erreur carousel-requests:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// Approuver/Refuser/Retirer du carrousel
+router.post('/events/:id/carousel', authMiddleware, adminMiddleware, async (req, res) => {
+  const eventId = parseInt(req.params.id, 10);
+  const { inCarousel } = req.body;
+
+  try {
+    if (!Number.isFinite(eventId)) {
+      return res.status(400).json({ message: 'ID événement invalide' });
+    }
+
+    const events = await supabaseAPI.select('Events', { id: eventId });
+    const event = events[0];
+
+    if (!event) {
+      return res.status(404).json({ message: 'Événement non trouvé' });
+    }
+
+    // Mettre à jour l'événement
+    await supabaseAPI.update('Events', eventId, {
+      in_carousel: inCarousel === true,
+      carousel_requested: false, // Réinitialiser la demande
+      updated_at: new Date().toISOString(),
+    });
+
+    // Notifier l'organisateur
+    try {
+      const message = inCarousel
+        ? '🎉 Votre événement a été ajouté au carrousel de la page d\'accueil !'
+        : 'Votre demande de carrousel a été traitée.';
+
+      await supabaseAPI.insert('Notifications', {
+        user_id: event.organizer_id,
+        type: 'carousel_update',
+        title: inCarousel ? '⭐ Carrousel approuvé' : '📋 Demande traitée',
+        message,
+        data: JSON.stringify({ eventId, inCarousel }),
+        created_at: new Date().toISOString(),
+      });
+    } catch (notifErr) {
+      console.warn('Warn: notification carousel failed:', notifErr?.message);
+    }
+
+    res.json({
+      message: inCarousel ? 'Événement ajouté au carrousel' : 'Événement retiré du carrousel',
+      event: { id: eventId, in_carousel: inCarousel },
+    });
+  } catch (err) {
+    console.error('❌ Erreur carousel update:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
 module.exports = router;

@@ -25,7 +25,8 @@ import {
   PieChart,
   BarChart3,
   ShieldCheck,
-  BadgeCheck
+  BadgeCheck,
+  Star
 } from 'lucide-react'
 
 type Stats = {
@@ -57,6 +58,7 @@ const navItems = [
   { path: '/admin/stats', label: 'Statistiques', icon: BarChart3 },
   { path: '/admin/moderation', label: 'Modération', icon: ShieldCheck },
   { path: '/admin/verifications', label: 'Vérifications', icon: BadgeCheck },
+  { path: '/admin/carousel', label: 'Carrousel', icon: Star },
   { path: '/admin/users', label: 'Utilisateurs', icon: Users },
   { path: '/admin/events', label: 'Événements', icon: Calendar },
   { path: '/admin/payments', label: 'Paiements', icon: CreditCard },
