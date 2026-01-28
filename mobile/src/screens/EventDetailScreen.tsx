@@ -20,7 +20,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ExpoCalendar from 'expo-calendar';
-import { Calendar, MapPin, Clock, User, Heart, Ticket, ArrowLeft, Tag, Plus, X, Flag, DollarSign, BarChart3, Share2, CalendarPlus, Bell, BadgeCheck } from 'lucide-react-native';
+import { Calendar, MapPin, Clock, User, Heart, Ticket, ArrowLeft, Tag, Plus, X, Flag, DollarSign, BarChart3, Share2, CalendarPlus, Bell, BadgeCheck, Star } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { api } from '../lib/api';
 import { colors } from '../theme/colors';
@@ -97,6 +97,10 @@ export default function EventDetailScreen() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const [reporting, setReporting] = useState(false);
+  
+  // Carousel request
+  const [requestingCarousel, setRequestingCarousel] = useState(false);
+  const [carouselRequested, setCarouselRequested] = useState(false);
 
   useEffect(() => {
     loadEvent();
@@ -324,6 +328,34 @@ export default function EventDetailScreen() {
   }
 
   const canManage = user && (user.role === 'admin' || user.id === event?.organizer_id);
+
+  // Demander le carrousel
+  async function requestCarousel() {
+    if (!event || !canManage) return;
+    
+    Alert.alert(
+      '🎠 Demande de Carrousel',
+      'Voulez-vous demander que votre événement soit mis en avant dans le carrousel de la page d\'accueil ? Cette demande sera examinée par notre équipe.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Demander',
+          onPress: async () => {
+            setRequestingCarousel(true);
+            try {
+              await api.post(`/api/events/${eventId}/request-carousel`);
+              setCarouselRequested(true);
+              Alert.alert('✅ Demande envoyée', 'Votre demande de mise en avant dans le carrousel a été envoyée. Notre équipe l\'examinera prochainement.');
+            } catch (err: any) {
+              Alert.alert('Erreur', err?.response?.data?.message || 'Erreur lors de la demande');
+            } finally {
+              setRequestingCarousel(false);
+            }
+          },
+        },
+      ]
+    );
+  }
 
   // Générer le lien de partage (deep link)
   const getEventShareUrl = () => {
@@ -766,6 +798,21 @@ export default function EventDetailScreen() {
               >
                 <Ticket size={20} color={colors.primary.purple} />
                 <Text style={styles.statsButtonText}>Mon QR Code organisateur</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.statsButton, { marginTop: 12, opacity: carouselRequested ? 0.6 : 1 }]}
+                onPress={requestCarousel}
+                disabled={requestingCarousel || carouselRequested}
+              >
+                {requestingCarousel ? (
+                  <ActivityIndicator size="small" color="#FFD700" />
+                ) : (
+                  <Star size={20} color="#FFD700" />
+                )}
+                <Text style={styles.statsButtonText}>
+                  {carouselRequested ? 'Demande envoyée ✓' : 'Demander le carrousel'}
+                </Text>
               </TouchableOpacity>
             </View>
           )}
