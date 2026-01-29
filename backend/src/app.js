@@ -142,6 +142,10 @@ app.use('/api/audit', auditRoutes);
 const challengesRoutes = require('./routes/challenges.routes');
 app.use('/api/challenges', challengesRoutes);
 
+// Refund routes (remboursements)
+const refundRoutes = require('./routes/refund.routes');
+app.use('/api/refunds', refundRoutes);
+
 // Health check étendu pour production
 app.get('/health', async (req, res) => {
   const health = {
