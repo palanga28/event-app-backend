@@ -48,6 +48,7 @@ export default function TicketDetailScreen() {
 
   const [ticket, setTicket] = useState<TicketDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [requestingRefund, setRequestingRefund] = useState(false);
 
   useEffect(() => {
     loadTicket();
@@ -100,8 +101,69 @@ export default function TicketDetailScreen() {
         return 'Utilisé';
       case 'cancelled':
         return 'Annulé';
+      case 'refund_pending':
+        return 'Remboursement en cours';
+      case 'refunded':
+        return 'Remboursé';
       default:
         return status;
+    }
+  };
+
+  const canRequestRefund = () => {
+    if (!ticket) return false;
+    if (ticket.status !== 'active') return false;
+    
+    // Vérifier si l'événement est dans plus de 24h
+    const eventDate = new Date(ticket.event.date || ticket.event.start_date || new Date());
+    const now = new Date();
+    const hoursUntilEvent = (eventDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+    
+    return hoursUntilEvent >= 24;
+  };
+
+  const handleRefundRequest = () => {
+    Alert.alert(
+      'Demander un remboursement',
+      'Êtes-vous sûr de vouloir demander un remboursement pour ce ticket ? Cette action est irréversible.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Confirmer',
+          style: 'destructive',
+          onPress: () => showRefundReasonPrompt(),
+        },
+      ]
+    );
+  };
+
+  const showRefundReasonPrompt = () => {
+    // Alert.prompt n'est disponible que sur iOS, on utilise une approche simple
+    submitRefundRequest('Demande utilisateur');
+  };
+
+  const submitRefundRequest = async (reason: string) => {
+    if (!ticket) return;
+    
+    setRequestingRefund(true);
+    try {
+      await api.post('/api/refunds/request', {
+        ticketId: ticket.id,
+        reason,
+      });
+      Alert.alert(
+        'Demande envoyée',
+        'Votre demande de remboursement a été envoyée. Vous serez notifié de la décision.',
+        [{ text: 'OK', onPress: () => loadTicket() }]
+      );
+    } catch (error: any) {
+      logger.error('Erreur demande remboursement:', error);
+      Alert.alert(
+        'Erreur',
+        error?.response?.data?.message || 'Impossible de soumettre la demande de remboursement'
+      );
+    } finally {
+      setRequestingRefund(false);
     }
   };
 
@@ -281,6 +343,43 @@ export default function TicketDetailScreen() {
             En cas de problème, contactez l'organisateur ou notre support
           </Text>
         </View>
+
+        {/* Refund Button */}
+        {canRequestRefund() && (
+          <TouchableOpacity
+            style={styles.refundButton}
+            onPress={handleRefundRequest}
+            disabled={requestingRefund}
+          >
+            {requestingRefund ? (
+              <ActivityIndicator size="small" color="#ef4444" />
+            ) : (
+              <>
+                <Ionicons name="arrow-undo-outline" size={20} color="#ef4444" />
+                <Text style={styles.refundButtonText}>Demander un remboursement</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
+
+        {/* Refund Status Info */}
+        {ticket.status === 'refund_pending' && (
+          <View style={styles.refundPendingInfo}>
+            <Ionicons name="time-outline" size={20} color="#f59e0b" />
+            <Text style={styles.refundPendingText}>
+              Votre demande de remboursement est en cours de traitement
+            </Text>
+          </View>
+        )}
+
+        {ticket.status === 'refunded' && (
+          <View style={styles.refundedInfo}>
+            <Ionicons name="checkmark-circle-outline" size={20} color="#10b981" />
+            <Text style={styles.refundedText}>
+              Ce ticket a été remboursé
+            </Text>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -494,5 +593,57 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#ef4444',
     fontWeight: '600',
+  },
+  refundButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fef2f2',
+    margin: 16,
+    marginTop: 0,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    gap: 8,
+  },
+  refundButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ef4444',
+  },
+  refundPendingInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fffbeb',
+    margin: 16,
+    marginTop: 0,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#fde68a',
+  },
+  refundPendingText: {
+    fontSize: 14,
+    color: '#b45309',
+    marginLeft: 12,
+    flex: 1,
+  },
+  refundedInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0fdf4',
+    margin: 16,
+    marginTop: 0,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+  },
+  refundedText: {
+    fontSize: 14,
+    color: '#059669',
+    marginLeft: 12,
+    flex: 1,
   },
 });
