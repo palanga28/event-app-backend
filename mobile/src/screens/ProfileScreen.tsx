@@ -14,6 +14,7 @@ import {
   Pressable,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { LinearGradient } from 'expo-linear-gradient';
 import { User, Ticket, Heart, Calendar, Settings, LogOut, Plus, Bell, Camera, Save, X, Edit, Image as ImageIcon, BadgeCheck } from 'lucide-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -103,7 +104,24 @@ export default function ProfileScreen() {
     });
 
     if (!result.canceled && result.assets[0]) {
-      await uploadAvatar(result.assets[0].uri);
+      // Convertir l'image en JPEG pour éviter les problèmes HEIC
+      const convertedUri = await convertToJpeg(result.assets[0].uri);
+      await uploadAvatar(convertedUri);
+    }
+  }
+
+  // Fonction pour convertir toute image en JPEG
+  async function convertToJpeg(uri: string): Promise<string> {
+    try {
+      const result = await ImageManipulator.manipulateAsync(
+        uri,
+        [], // Pas de transformation
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+      );
+      return result.uri;
+    } catch (error) {
+      console.log('Erreur conversion image:', error);
+      return uri; // Retourner l'URI original en cas d'erreur
     }
   }
 
@@ -167,7 +185,9 @@ export default function ProfileScreen() {
 
     if (!result.canceled && result.assets[0]) {
       setShowAvatarModal(false);
-      await createStory(result.assets[0].uri);
+      // Convertir l'image en JPEG pour éviter les problèmes HEIC
+      const convertedUri = await convertToJpeg(result.assets[0].uri);
+      await createStory(convertedUri);
     }
   }
 
