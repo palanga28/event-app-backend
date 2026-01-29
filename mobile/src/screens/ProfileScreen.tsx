@@ -99,6 +99,7 @@ export default function ProfileScreen() {
       mediaTypes: ['images'],
       allowsEditing: false, // Désactivé car l'éditeur natif Android a des problèmes de visibilité des boutons
       quality: 0.8,
+      exif: false, // Évite les problèmes avec HEIC
     });
 
     if (!result.canceled && result.assets[0]) {
@@ -111,9 +112,20 @@ export default function ProfileScreen() {
     setShowAvatarModal(false);
     try {
       const formData = new FormData();
-      const filename = uri.split('/').pop() || 'avatar.jpg';
+      let filename = uri.split('/').pop() || 'avatar.jpg';
+      
+      // Convertir HEIC en JPEG pour le nom de fichier et le type
+      if (filename.toLowerCase().endsWith('.heic') || filename.toLowerCase().endsWith('.heif')) {
+        filename = filename.replace(/\.(heic|heif)$/i, '.jpg');
+      }
+      
       const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : 'image/jpeg';
+      let type = match ? `image/${match[1]}` : 'image/jpeg';
+      
+      // Forcer JPEG si c'est HEIC
+      if (type === 'image/heic' || type === 'image/heif') {
+        type = 'image/jpeg';
+      }
 
       formData.append('file', {
         uri,
@@ -150,6 +162,7 @@ export default function ProfileScreen() {
       mediaTypes: ['images'],
       allowsEditing: false, // Désactivé car l'éditeur natif Android a des problèmes de visibilité des boutons
       quality: 0.8,
+      exif: false, // Évite les problèmes avec HEIC
     });
 
     if (!result.canceled && result.assets[0]) {
@@ -162,9 +175,20 @@ export default function ProfileScreen() {
     setCreatingStory(true);
     try {
       const formData = new FormData();
-      const filename = uri.split('/').pop() || 'story.jpg';
+      let filename = uri.split('/').pop() || 'story.jpg';
+      
+      // Convertir HEIC en JPEG pour le nom de fichier et le type
+      if (filename.toLowerCase().endsWith('.heic') || filename.toLowerCase().endsWith('.heif')) {
+        filename = filename.replace(/\.(heic|heif)$/i, '.jpg');
+      }
+      
       const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : 'image/jpeg';
+      let type = match ? `image/${match[1]}` : 'image/jpeg';
+      
+      // Forcer JPEG si c'est HEIC
+      if (type === 'image/heic' || type === 'image/heif') {
+        type = 'image/jpeg';
+      }
 
       formData.append('file', {
         uri,
