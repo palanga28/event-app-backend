@@ -7,6 +7,11 @@ console.log('✅ event-comments-likes.routes chargé');
 
 // Obtenir tous les likes de tous les commentaires d'un événement en une seule requête
 router.get('/:eventId/comments-likes', optionalAuthMiddleware, async (req, res) => {
+  // Désactiver le cache pour toujours avoir des données fraîches
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  
   const eventId = parseInt(req.params.eventId, 10);
 
   try {
