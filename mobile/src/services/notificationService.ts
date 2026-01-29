@@ -198,11 +198,13 @@ class NotificationService {
         content: {
           title,
           body,
-          sound: true,
+          sound: 'default',
+          priority: Notifications.AndroidNotificationPriority.HIGH,
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
           seconds,
+          channelId: 'default',
         },
       });
 
@@ -249,7 +251,8 @@ class NotificationService {
         content: {
           title: '🎉 Rappel événement',
           body: `${eventTitle} commence dans ${reminderMinutes >= 60 ? `${reminderMinutes / 60}h` : `${reminderMinutes} min`}`,
-          sound: true,
+          sound: 'default',
+          priority: Notifications.AndroidNotificationPriority.HIGH,
           data: {
             type: 'event_reminder',
             eventId,
@@ -259,6 +262,7 @@ class NotificationService {
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
           seconds: delaySeconds,
+          channelId: 'default',
         },
       });
 
@@ -328,6 +332,19 @@ class NotificationService {
    */
   async checkAndRequestPermissions(): Promise<boolean> {
     try {
+      // Configurer le canal Android si nécessaire
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'Notifications',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#FF6B35',
+          sound: 'default',
+          enableVibrate: true,
+          enableLights: true,
+        });
+      }
+
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
 
