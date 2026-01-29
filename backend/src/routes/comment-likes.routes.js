@@ -25,12 +25,13 @@ router.post('/:commentId/toggle', authMiddleware, async (req, res) => {
     console.log('✅ Commentaire trouvé');
 
     // Vérifier si l'utilisateur a déjà liké (useServiceRole pour RLS)
+    console.log(`🔍 Recherche like: comment_id=${commentId}, user_id=${req.user.id}`);
     const existingLikes = await supabaseAPI.select('CommentLikes', {
       comment_id: commentId,
       user_id: req.user.id
     }, {}, true);
 
-    console.log(`📊 Likes existants: ${existingLikes.length}`);
+    console.log(`📊 Likes existants: ${existingLikes.length}`, JSON.stringify(existingLikes));
 
     if (existingLikes && existingLikes.length > 0) {
       // Unlike
