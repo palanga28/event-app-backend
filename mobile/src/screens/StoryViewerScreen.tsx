@@ -120,8 +120,11 @@ export function StoryViewerScreen({ visible, story, stories, currentIndex, onClo
     }
   }, []);
 
-  // Reset quand on change de story
+  // Reset quand on change de story - utiliser story.id comme dépendance unique
+  const storyId = story?.id;
   useEffect(() => {
+    if (!storyId) return;
+    
     progressAnim.setValue(0);
     setImageLoaded(false);
     preloadImages();
@@ -132,16 +135,20 @@ export function StoryViewerScreen({ visible, story, stories, currentIndex, onClo
     }, 500);
     
     return () => clearTimeout(fallbackTimer);
-  }, [currentIndex, progressAnim, preloadImages]);
+  }, [storyId]); // Seulement storyId comme dépendance
 
-  // Gérer la visibilité et l'état de la story
+  // Gérer la visibilité
   useEffect(() => {
-    if (!visible || !story) {
+    if (!visible) {
       progressAnim.setValue(0);
       setImageLoaded(false);
       pauseProgressAnimation();
-      return;
     }
+  }, [visible]);
+
+  // Marquer la story comme vue et vérifier expiration
+  useEffect(() => {
+    if (!visible || !story) return;
 
     // Vérifier si la story est expirée
     if (isStoryExpired(story)) {
@@ -153,12 +160,12 @@ export function StoryViewerScreen({ visible, story, stories, currentIndex, onClo
       return;
     }
 
-    // Marquer la story comme vue
+    // Marquer la story comme vue (une seule fois par story)
     if (!viewedStoriesRef.current.has(story.id)) {
       viewedStoriesRef.current.add(story.id);
       markStoryAsViewed(story.id);
     }
-  }, [visible, story, isStoryExpired, currentIndex, stories.length, onNext, onClose, progressAnim, pauseProgressAnimation]);
+  }, [storyId, visible]); // Dépendances minimales
 
   // Reset viewed stories when viewer closes + cleanup timers
   useEffect(() => {
