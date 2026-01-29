@@ -194,21 +194,14 @@ export default function ProfileScreen() {
   async function createStory(uri: string) {
     setCreatingStory(true);
     try {
+      console.log('📸 Création story avec URI:', uri);
+      
       const formData = new FormData();
-      let filename = uri.split('/').pop() || 'story.jpg';
+      // Après conversion, le fichier est toujours en JPEG
+      const filename = 'story_' + Date.now() + '.jpg';
+      const type = 'image/jpeg';
       
-      // Convertir HEIC en JPEG pour le nom de fichier et le type
-      if (filename.toLowerCase().endsWith('.heic') || filename.toLowerCase().endsWith('.heif')) {
-        filename = filename.replace(/\.(heic|heif)$/i, '.jpg');
-      }
-      
-      const match = /\.(\w+)$/.exec(filename);
-      let type = match ? `image/${match[1]}` : 'image/jpeg';
-      
-      // Forcer JPEG si c'est HEIC
-      if (type === 'image/heic' || type === 'image/heif') {
-        type = 'image/jpeg';
-      }
+      console.log('📝 Filename:', filename, 'Type:', type);
 
       formData.append('file', {
         uri,
@@ -230,7 +223,9 @@ export default function ProfileScreen() {
 
       Alert.alert('Succès', 'Story créée !');
     } catch (err: any) {
-      Alert.alert('Erreur', err?.response?.data?.message || 'Erreur création story');
+      console.error('❌ Erreur création story:', err);
+      console.error('❌ Response:', err?.response?.data);
+      Alert.alert('Erreur', err?.response?.data?.message || err?.message || 'Erreur création story');
     } finally {
       setCreatingStory(false);
     }
