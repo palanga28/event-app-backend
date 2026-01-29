@@ -275,11 +275,13 @@ export function StoryViewerScreen({ visible, story, stories, currentIndex, onClo
         onTouchEnd={handleTouchEnd}
         onTouchCancel={handleTouchCancel}
       >
-        {/* Image de la story */}
+        {/* Image de la story - key unique pour forcer le rechargement */}
         <Image
-          source={{ uri: story.image_url }}
+          key={`story-image-${story.id}-${currentIndex}`}
+          source={{ uri: story.image_url, cache: 'reload' }}
           style={styles.storyImage}
           resizeMode="cover"
+          onLoadStart={() => setImageLoaded(false)}
           onLoad={() => setImageLoaded(true)}
           onError={() => setImageLoaded(true)}
         />
