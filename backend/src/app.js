@@ -104,6 +104,11 @@ app.use('/api/favorites', favoritesRoutes);
 app.use('/api/comments', commentsRoutes);
 app.use('/api/comment-likes', commentLikesRoutes);
 app.use('/api/event-likes', eventLikesRoutes);
+
+// Event comments likes routes (pour récupérer tous les likes d'un événement)
+const eventCommentsLikesRoutes = require('./routes/event-comments-likes.routes');
+app.use('/api/events', eventCommentsLikesRoutes);
+
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/me', meRoutes);
 app.use('/api/payments', paymentRoutes);
