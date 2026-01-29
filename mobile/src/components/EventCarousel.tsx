@@ -25,6 +25,7 @@ type CarouselEvent = {
   cover_image: string | null;
   images?: string[] | null;
   featured?: boolean;
+  in_carousel?: boolean;
   organizer?: {
     id: number;
     name: string;
@@ -44,7 +45,7 @@ export function EventCarousel({ events, favoriteIds, onToggleFavorite }: Props) 
   const scrollViewRef = useRef<ScrollView>(null);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
-  const featuredEvents = events.filter((e) => e.featured);
+  const featuredEvents = events.filter((e) => e.featured || e.in_carousel);
 
   useEffect(() => {
     if (featuredEvents.length <= 1) return;
