@@ -253,7 +253,7 @@ const supabaseAPI = {
   },
   
   // DELETE
-  delete: async (table, filters = {}) => {
+  delete: async (table, filters = {}, useServiceRole = false) => {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
@@ -271,7 +271,8 @@ const supabaseAPI = {
     if (process.env.NODE_ENV === 'development') {
       console.log(`🛠 Supabase Query: DELETE ${url}`);
     }
-    await apiClient.delete(url);
+    const client = useServiceRole ? serviceApiClient : apiClient;
+    await client.delete(url);
     return true;
   }
 };

@@ -38,7 +38,7 @@ router.post('/:commentId/toggle', authMiddleware, async (req, res) => {
       await supabaseAPI.delete('CommentLikes', {
         comment_id: commentId,
         user_id: req.user.id
-      });
+      }, true); // useServiceRole = true
       
       // Compter les likes restants
       const allLikes = await supabaseAPI.select('CommentLikes', { comment_id: commentId });
@@ -56,7 +56,7 @@ router.post('/:commentId/toggle', authMiddleware, async (req, res) => {
         comment_id: commentId,
         user_id: req.user.id,
         created_at: new Date().toISOString()
-      });
+      }, true); // useServiceRole = true
 
       // Compter les likes
       const allLikes = await supabaseAPI.select('CommentLikes', { comment_id: commentId });
