@@ -503,10 +503,10 @@ export default function EventDetailScreen() {
       return;
     }
 
-    // Initialiser les notifications si pas encore fait
-    const token = await notificationService.initialize();
+    // Vérifier les permissions de notifications (pas besoin du token push pour les rappels locaux)
+    const hasPermission = await notificationService.checkAndRequestPermissions();
     
-    if (!token) {
+    if (!hasPermission) {
       Alert.alert(
         '⚠️ Notifications désactivées',
         'Veuillez activer les notifications dans les paramètres de votre téléphone pour recevoir des rappels.',

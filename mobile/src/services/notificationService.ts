@@ -310,6 +310,27 @@ class NotificationService {
   }
 
   /**
+   * Vérifier et demander les permissions de notifications (sans token push)
+   * Utile pour les notifications locales
+   */
+  async checkAndRequestPermissions(): Promise<boolean> {
+    try {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+
+      return finalStatus === 'granted';
+    } catch (error) {
+      logger.error('❌ Erreur vérification permissions:', error);
+      return false;
+    }
+  }
+
+  /**
    * Obtenir le nombre de notifications non lues
    */
   async getBadgeCount(): Promise<number> {
