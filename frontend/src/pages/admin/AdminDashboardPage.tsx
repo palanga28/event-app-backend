@@ -26,7 +26,8 @@ import {
   BarChart3,
   ShieldCheck,
   BadgeCheck,
-  Star
+  Star,
+  RotateCcw
 } from 'lucide-react'
 
 type Stats = {
@@ -62,6 +63,7 @@ const navItems = [
   { path: '/admin/users', label: 'Utilisateurs', icon: Users },
   { path: '/admin/events', label: 'Événements', icon: Calendar },
   { path: '/admin/payments', label: 'Paiements', icon: CreditCard },
+  { path: '/admin/refunds', label: 'Remboursements', icon: RotateCcw },
   { path: '/admin/tickets', label: 'Tickets', icon: Ticket },
   { path: '/admin/reports', label: 'Signalements', icon: Flag },
   { path: '/admin/challenges', label: 'Défis', icon: Trophy },

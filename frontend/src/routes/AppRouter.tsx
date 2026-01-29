@@ -36,6 +36,7 @@ import AdminTicketsPage from '../pages/admin/AdminTicketsPage'
 import AdminModerationPage from '../pages/admin/AdminModerationPage'
 import AdminVerificationsPage from '../pages/admin/AdminVerificationsPage'
 import AdminCarouselPage from '../pages/admin/AdminCarouselPage'
+import AdminRefundsPage from '../pages/admin/AdminRefundsPage'
 import RequireAuth from './RequireAuth'
 import RequireRole from './RequireRole'
 
@@ -201,6 +202,10 @@ export default function AppRouter() {
                     {
                       path: 'admin/carousel',
                       element: <AdminCarouselPage />,
+                    },
+                    {
+                      path: 'admin/refunds',
+                      element: <AdminRefundsPage />,
                     },
                   ],
                 },
