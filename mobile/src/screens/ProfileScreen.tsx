@@ -110,14 +110,15 @@ export default function ProfileScreen() {
     }
   }
 
-  // Fonction pour convertir toute image en JPEG
+  // Fonction pour convertir toute image en JPEG et réduire la taille
   async function convertToJpeg(uri: string): Promise<string> {
     try {
       const result = await ImageManipulator.manipulateAsync(
         uri,
-        [], // Pas de transformation
-        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+        [{ resize: { width: 1080 } }], // Réduire à 1080px de large max
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
       );
+      console.log('✅ Image convertie:', result.uri);
       return result.uri;
     } catch (error) {
       console.log('Erreur conversion image:', error);
@@ -211,6 +212,7 @@ export default function ProfileScreen() {
 
       const uploadRes = await api.post('/api/uploads/story', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 60000, // 60 secondes pour l'upload
       });
 
       const imageUrl = uploadRes.data?.url;
