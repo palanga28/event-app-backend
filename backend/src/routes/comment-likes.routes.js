@@ -24,11 +24,11 @@ router.post('/:commentId/toggle', authMiddleware, async (req, res) => {
 
     console.log('✅ Commentaire trouvé');
 
-    // Vérifier si l'utilisateur a déjà liké
+    // Vérifier si l'utilisateur a déjà liké (useServiceRole pour RLS)
     const existingLikes = await supabaseAPI.select('CommentLikes', {
       comment_id: commentId,
       user_id: req.user.id
-    });
+    }, {}, true);
 
     console.log(`📊 Likes existants: ${existingLikes.length}`);
 
@@ -38,10 +38,10 @@ router.post('/:commentId/toggle', authMiddleware, async (req, res) => {
       await supabaseAPI.delete('CommentLikes', {
         comment_id: commentId,
         user_id: req.user.id
-      }, true); // useServiceRole = true
+      }, true);
       
-      // Compter les likes restants
-      const allLikes = await supabaseAPI.select('CommentLikes', { comment_id: commentId });
+      // Compter les likes restants (useServiceRole)
+      const allLikes = await supabaseAPI.select('CommentLikes', { comment_id: commentId }, {}, true);
       
       console.log(`✅ Unlike réussi. Total: ${allLikes.length}`);
       return res.json({ 
@@ -56,10 +56,10 @@ router.post('/:commentId/toggle', authMiddleware, async (req, res) => {
         comment_id: commentId,
         user_id: req.user.id,
         created_at: new Date().toISOString()
-      }, true); // useServiceRole = true
+      }, true);
 
-      // Compter les likes
-      const allLikes = await supabaseAPI.select('CommentLikes', { comment_id: commentId });
+      // Compter les likes (useServiceRole)
+      const allLikes = await supabaseAPI.select('CommentLikes', { comment_id: commentId }, {}, true);
 
       console.log(`✅ Like réussi. Total: ${allLikes.length}`);
       return res.json({ 
@@ -84,7 +84,7 @@ router.get('/:commentId', async (req, res) => {
       return res.status(400).json({ message: 'ID commentaire invalide' });
     }
 
-    const likes = await supabaseAPI.select('CommentLikes', { comment_id: commentId });
+    const likes = await supabaseAPI.select('CommentLikes', { comment_id: commentId }, {}, true);
     
     res.json({ 
       commentId,
