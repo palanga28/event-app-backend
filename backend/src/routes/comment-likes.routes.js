@@ -53,16 +53,17 @@ router.post('/:commentId/toggle', authMiddleware, async (req, res) => {
     } else {
       // Like
       console.log('➕ Like en cours...');
-      await supabaseAPI.insert('CommentLikes', {
+      const insertResult = await supabaseAPI.insert('CommentLikes', {
         comment_id: commentId,
         user_id: req.user.id,
         created_at: new Date().toISOString()
       }, true);
+      console.log('📝 Insert result:', JSON.stringify(insertResult));
 
       // Compter les likes (useServiceRole)
       const allLikes = await supabaseAPI.select('CommentLikes', { comment_id: commentId }, {}, true);
 
-      console.log(`✅ Like réussi. Total: ${allLikes.length}`);
+      console.log(`✅ Like réussi. Total: ${allLikes.length}`, JSON.stringify(allLikes));
       return res.json({ 
         message: 'Like ajouté', 
         liked: true,

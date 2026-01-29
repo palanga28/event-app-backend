@@ -25,11 +25,14 @@ router.get('/:eventId/comments-likes', optionalAuthMiddleware, async (req, res) 
     }
 
     const commentIds = comments.map(c => c.id);
+    console.log(`📝 Comment IDs pour event ${eventId}:`, commentIds);
 
     // 2. Récupérer tous les likes pour ces commentaires (useServiceRole pour RLS)
     const allLikes = await supabaseAPI.select('CommentLikes', {
       comment_id: { in: commentIds }
     }, {}, true);
+    
+    console.log(`📊 Total likes trouvés: ${allLikes.length}`, allLikes.length > 0 ? JSON.stringify(allLikes.slice(0, 5)) : '[]');
 
     // 3. Grouper les likes par commentaire
     const likesByComment = {};
