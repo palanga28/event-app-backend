@@ -125,6 +125,13 @@ export function StoryViewerScreen({ visible, story, stories, currentIndex, onClo
     progressAnim.setValue(0);
     setImageLoaded(false);
     preloadImages();
+    
+    // Timeout de secours si onLoad ne se déclenche pas (image en cache)
+    const fallbackTimer = setTimeout(() => {
+      setImageLoaded(true);
+    }, 500);
+    
+    return () => clearTimeout(fallbackTimer);
   }, [currentIndex, progressAnim, preloadImages]);
 
   // Gérer la visibilité et l'état de la story
