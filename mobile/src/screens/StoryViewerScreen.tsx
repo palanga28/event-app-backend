@@ -160,11 +160,24 @@ export function StoryViewerScreen({ visible, story, stories, currentIndex, onClo
     }
   }, [visible, story, isStoryExpired, currentIndex, stories.length, onNext, onClose, progressAnim, pauseProgressAnimation]);
 
-  // Reset viewed stories when viewer closes
+  // Reset viewed stories when viewer closes + cleanup timers
   useEffect(() => {
     if (!visible) {
       viewedStoriesRef.current.clear();
+      // Nettoyer le timer d'appui long
+      if (longPressTimer.current) {
+        clearTimeout(longPressTimer.current);
+        longPressTimer.current = null;
+      }
     }
+    
+    // Cleanup au démontage du composant
+    return () => {
+      if (longPressTimer.current) {
+        clearTimeout(longPressTimer.current);
+        longPressTimer.current = null;
+      }
+    };
   }, [visible]);
 
   // Démarrer/arrêter l'animation selon l'état

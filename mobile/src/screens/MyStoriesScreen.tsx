@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { Camera, X, Plus, Trash2, Image as ImageIcon } from 'lucide-react-native';
 import { api } from '../lib/api';
 import { colors } from '../theme/colors';
@@ -83,6 +84,21 @@ export default function MyStoriesScreen() {
     }
   }
 
+  // Fonction pour convertir toute image en JPEG et réduire la taille
+  async function convertToJpeg(uri: string): Promise<string> {
+    try {
+      const result = await ImageManipulator.manipulateAsync(
+        uri,
+        [{ resize: { width: 1080 } }], // Réduire à 1080px de large max
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+      );
+      return result.uri;
+    } catch (error) {
+      console.log('Erreur conversion image:', error);
+      return uri; // Retourner l'URI original en cas d'erreur
+    }
+  }
+
   async function createStory() {
     if (!selectedImage) {
       Alert.alert('Erreur', 'Veuillez sélectionner une image');
@@ -91,20 +107,23 @@ export default function MyStoriesScreen() {
 
     setUploading(true);
     try {
+      // Convertir l'image en JPEG pour éviter les problèmes HEIC
+      const convertedUri = await convertToJpeg(selectedImage);
+      
       // Upload image
       const formData = new FormData();
-      const filename = selectedImage.split('/').pop() || 'story.jpg';
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : 'image/jpeg';
+      const filename = 'story_' + Date.now() + '.jpg';
+      const type = 'image/jpeg';
 
       formData.append('file', {
-        uri: selectedImage,
+        uri: convertedUri,
         name: filename,
         type,
       } as any);
 
       const uploadRes = await api.post('/api/uploads/story', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 60000, // 60 secondes pour l'upload
       });
 
       const imageUrl = uploadRes.data?.url;
