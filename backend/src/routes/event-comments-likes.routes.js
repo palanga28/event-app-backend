@@ -14,25 +14,26 @@ router.get('/:eventId/comments-likes', optionalAuthMiddleware, async (req, res) 
       return res.status(400).json({ message: 'ID événement invalide' });
     }
 
-    // 1. Récupérer tous les commentaires de l'événement
-    const comments = await supabaseAPI.select('Comments', { 
-      event_id: eventId,
-      deleted_at: null 
+    // 1. Récupérer tous les commentaires de l'événement (sans filtre deleted_at pour éviter problème null)
+    const allComments = await supabaseAPI.select('Comments', { 
+      event_id: eventId
     });
+    const comments = allComments.filter(c => !c.deleted_at);
+    
+    console.log(`📝 Commentaires pour event ${eventId}: ${comments.length} sur ${allComments.length}`);
 
     if (!comments || comments.length === 0) {
       return res.json({ likes: {} });
     }
 
     const commentIds = comments.map(c => c.id);
-    console.log(`📝 Comment IDs pour event ${eventId}:`, commentIds);
+    console.log(`📝 Comment IDs:`, commentIds);
 
-    // 2. Récupérer tous les likes pour ces commentaires (useServiceRole pour RLS)
-    const allLikes = await supabaseAPI.select('CommentLikes', {
-      comment_id: { in: commentIds }
-    }, {}, true);
+    // 2. Récupérer TOUS les likes de la table puis filtrer (pour contourner problème filtre IN)
+    const allLikesRaw = await supabaseAPI.select('CommentLikes', {}, {}, true);
+    const allLikes = allLikesRaw.filter(l => commentIds.includes(l.comment_id));
     
-    console.log(`📊 Total likes trouvés: ${allLikes.length}`, allLikes.length > 0 ? JSON.stringify(allLikes.slice(0, 5)) : '[]');
+    console.log(`📊 Total likes trouvés: ${allLikes.length}/${allLikesRaw.length}`, allLikes.length > 0 ? JSON.stringify(allLikes.slice(0, 5)) : '[]');
 
     // 3. Grouper les likes par commentaire
     const likesByComment = {};
