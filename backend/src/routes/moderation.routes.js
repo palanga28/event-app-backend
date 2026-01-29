@@ -234,19 +234,37 @@ router.post('/events/:id/approve', authMiddleware, moderatorMiddleware, async (r
       reviewed_by: reviewerId,
       reviewed_at: new Date().toISOString(),
       rejection_reason: null,
+      updated_at: new Date().toISOString(),
     }, { id: eventId });
 
-    // Créer une entrée dans l'historique
-    await supabaseAPI.insert('EventReviews', {
-      event_id: eventId,
-      reviewer_id: reviewerId,
-      action: 'approved',
-      admin_notes: adminNotes,
-      previous_status: previousStatus,
-      new_status: 'published',
-    });
+    // Créer une entrée dans l'historique (optionnel)
+    try {
+      await supabaseAPI.insert('EventReviews', {
+        event_id: eventId,
+        reviewer_id: reviewerId,
+        action: 'approved',
+        admin_notes: adminNotes,
+        previous_status: previousStatus,
+        new_status: 'published',
+        created_at: new Date().toISOString(),
+      });
+    } catch (reviewErr) {
+      console.warn('Warn: EventReviews insert failed:', reviewErr?.message);
+    }
 
-    // TODO: Notifier l'organisateur
+    // Notifier l'organisateur
+    try {
+      await supabaseAPI.insert('Notifications', {
+        user_id: event.organizer_id,
+        type: 'event_approved',
+        title: '✅ Événement approuvé',
+        message: `Votre événement "${event.title}" a été approuvé et est maintenant visible.`,
+        data: JSON.stringify({ eventId }),
+        created_at: new Date().toISOString(),
+      });
+    } catch (notifErr) {
+      console.warn('Warn: notification failed:', notifErr?.message);
+    }
 
     res.json({
       message: 'Événement approuvé et publié',
@@ -287,20 +305,38 @@ router.post('/events/:id/reject', authMiddleware, moderatorMiddleware, async (re
       reviewed_by: reviewerId,
       reviewed_at: new Date().toISOString(),
       rejection_reason: reason,
+      updated_at: new Date().toISOString(),
     }, { id: eventId });
 
-    // Créer une entrée dans l'historique
-    await supabaseAPI.insert('EventReviews', {
-      event_id: eventId,
-      reviewer_id: reviewerId,
-      action: 'rejected',
-      reason,
-      admin_notes: adminNotes,
-      previous_status: previousStatus,
-      new_status: 'rejected',
-    });
+    // Créer une entrée dans l'historique (optionnel)
+    try {
+      await supabaseAPI.insert('EventReviews', {
+        event_id: eventId,
+        reviewer_id: reviewerId,
+        action: 'rejected',
+        reason,
+        admin_notes: adminNotes,
+        previous_status: previousStatus,
+        new_status: 'rejected',
+        created_at: new Date().toISOString(),
+      });
+    } catch (reviewErr) {
+      console.warn('Warn: EventReviews insert failed:', reviewErr?.message);
+    }
 
-    // TODO: Notifier l'organisateur
+    // Notifier l'organisateur
+    try {
+      await supabaseAPI.insert('Notifications', {
+        user_id: event.organizer_id,
+        type: 'event_rejected',
+        title: '❌ Événement refusé',
+        message: `Votre événement "${event.title}" a été refusé. Motif: ${reason}`,
+        data: JSON.stringify({ eventId, reason }),
+        created_at: new Date().toISOString(),
+      });
+    } catch (notifErr) {
+      console.warn('Warn: notification failed:', notifErr?.message);
+    }
 
     res.json({
       message: 'Événement rejeté',
@@ -341,20 +377,38 @@ router.post('/events/:id/suspend', authMiddleware, adminMiddleware, async (req, 
       reviewed_by: reviewerId,
       reviewed_at: new Date().toISOString(),
       rejection_reason: reason,
+      updated_at: new Date().toISOString(),
     }, { id: eventId });
 
-    // Créer une entrée dans l'historique
-    await supabaseAPI.insert('EventReviews', {
-      event_id: eventId,
-      reviewer_id: reviewerId,
-      action: 'suspended',
-      reason,
-      admin_notes: adminNotes,
-      previous_status: previousStatus,
-      new_status: 'suspended',
-    });
+    // Créer une entrée dans l'historique (optionnel)
+    try {
+      await supabaseAPI.insert('EventReviews', {
+        event_id: eventId,
+        reviewer_id: reviewerId,
+        action: 'suspended',
+        reason,
+        admin_notes: adminNotes,
+        previous_status: previousStatus,
+        new_status: 'suspended',
+        created_at: new Date().toISOString(),
+      });
+    } catch (reviewErr) {
+      console.warn('Warn: EventReviews insert failed:', reviewErr?.message);
+    }
 
-    // TODO: Notifier l'organisateur et les acheteurs
+    // Notifier l'organisateur
+    try {
+      await supabaseAPI.insert('Notifications', {
+        user_id: event.organizer_id,
+        type: 'event_suspended',
+        title: '⚠️ Événement suspendu',
+        message: `Votre événement "${event.title}" a été suspendu. Motif: ${reason}`,
+        data: JSON.stringify({ eventId, reason }),
+        created_at: new Date().toISOString(),
+      });
+    } catch (notifErr) {
+      console.warn('Warn: notification failed:', notifErr?.message);
+    }
 
     res.json({
       message: 'Événement suspendu',
@@ -395,17 +449,37 @@ router.post('/events/:id/restore', authMiddleware, adminMiddleware, async (req, 
       reviewed_by: reviewerId,
       reviewed_at: new Date().toISOString(),
       rejection_reason: null,
+      updated_at: new Date().toISOString(),
     }, { id: eventId });
 
-    // Créer une entrée dans l'historique
-    await supabaseAPI.insert('EventReviews', {
-      event_id: eventId,
-      reviewer_id: reviewerId,
-      action: 'restored',
-      admin_notes: adminNotes,
-      previous_status: previousStatus,
-      new_status: 'published',
-    });
+    // Créer une entrée dans l'historique (optionnel)
+    try {
+      await supabaseAPI.insert('EventReviews', {
+        event_id: eventId,
+        reviewer_id: reviewerId,
+        action: 'restored',
+        admin_notes: adminNotes,
+        previous_status: previousStatus,
+        new_status: 'published',
+        created_at: new Date().toISOString(),
+      });
+    } catch (reviewErr) {
+      console.warn('Warn: EventReviews insert failed:', reviewErr?.message);
+    }
+
+    // Notifier l'organisateur
+    try {
+      await supabaseAPI.insert('Notifications', {
+        user_id: event.organizer_id,
+        type: 'event_restored',
+        title: '✅ Événement restauré',
+        message: `Votre événement "${event.title}" a été restauré et est de nouveau visible.`,
+        data: JSON.stringify({ eventId }),
+        created_at: new Date().toISOString(),
+      });
+    } catch (notifErr) {
+      console.warn('Warn: notification failed:', notifErr?.message);
+    }
 
     res.json({
       message: 'Événement restauré',
