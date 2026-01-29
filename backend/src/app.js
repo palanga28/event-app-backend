@@ -133,6 +133,10 @@ app.use('/api/tickets', ticketValidationRoutes);
 const auditRoutes = require('./routes/audit.routes');
 app.use('/api/audit', auditRoutes);
 
+// Challenges routes
+const challengesRoutes = require('./routes/challenges.routes');
+app.use('/api/challenges', challengesRoutes);
+
 // Health check étendu pour production
 app.get('/health', async (req, res) => {
   const health = {
