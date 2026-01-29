@@ -32,6 +32,19 @@ class NotificationService {
         return null;
       }
 
+      // Configurer le canal de notification Android avec son
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'Notifications',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#FF6B35',
+          sound: 'default',
+          enableVibrate: true,
+          enableLights: true,
+        });
+      }
+
       // Demander les permissions
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
