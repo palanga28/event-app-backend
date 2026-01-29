@@ -59,13 +59,23 @@ router.get('/stats', authMiddleware, moderatorMiddleware, async (req, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    const reviews = await supabaseAPI.select('EventReviews', {}, { limit: 1000, order: 'created_at.desc' });
-    const todayReviews = reviews.filter(r => new Date(r.created_at) >= today);
+    // Compter directement depuis les événements (reviewed_at pour aujourd'hui)
+    const approvedToday = allEvents.filter(e => 
+      e.status === 'published' && 
+      e.reviewed_at && 
+      new Date(e.reviewed_at) >= today
+    ).length;
+
+    const rejectedToday = allEvents.filter(e => 
+      e.status === 'rejected' && 
+      e.reviewed_at && 
+      new Date(e.reviewed_at) >= today
+    ).length;
 
     res.json({
       pending: allEvents.filter(e => e.status === 'pending_review').length,
-      approved_today: todayReviews.filter(r => r.action === 'approve').length,
-      rejected_today: todayReviews.filter(r => r.action === 'reject').length,
+      approved_today: approvedToday,
+      rejected_today: rejectedToday,
     });
   } catch (err) {
     console.error('Erreur stats modération:', err);
