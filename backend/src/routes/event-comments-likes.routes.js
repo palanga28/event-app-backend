@@ -1,12 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const { supabaseAPI } = require('../config/api');
-const authMiddleware = require('../middlewares/auth.middleware');
+const optionalAuthMiddleware = require('../middlewares/optionalAuth.middleware');
 
 console.log('✅ event-comments-likes.routes chargé');
 
 // Obtenir tous les likes de tous les commentaires d'un événement en une seule requête
-router.get('/:eventId/comments-likes', async (req, res) => {
+router.get('/:eventId/comments-likes', optionalAuthMiddleware, async (req, res) => {
   const eventId = parseInt(req.params.eventId, 10);
 
   try {
@@ -26,10 +26,10 @@ router.get('/:eventId/comments-likes', async (req, res) => {
 
     const commentIds = comments.map(c => c.id);
 
-    // 2. Récupérer tous les likes pour ces commentaires en une seule requête
+    // 2. Récupérer tous les likes pour ces commentaires (useServiceRole pour RLS)
     const allLikes = await supabaseAPI.select('CommentLikes', {
       comment_id: { in: commentIds }
-    });
+    }, {}, true);
 
     // 3. Grouper les likes par commentaire
     const likesByComment = {};
