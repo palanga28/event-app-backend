@@ -152,6 +152,152 @@ router.get('/challenges', authMiddleware, async (req, res) => {
   }
 });
 
+// =========================
+// RGPD - Export des données utilisateur (Article 20)
+// =========================
+router.get('/export', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Récupérer toutes les données de l'utilisateur
+    const [
+      userData,
+      tickets,
+      events,
+      favorites,
+      follows,
+      followers,
+      comments,
+      stories,
+      notifications
+    ] = await Promise.all([
+      supabaseAPI.select('Users', { id: userId }),
+      supabaseAPI.select('Tickets', { user_id: userId }),
+      supabaseAPI.select('Events', { organizer_id: userId }),
+      supabaseAPI.select('Favorites', { user_id: userId }),
+      supabaseAPI.select('Follows', { follower_id: userId }),
+      supabaseAPI.select('Follows', { following_id: userId }),
+      supabaseAPI.select('Comments', { user_id: userId }),
+      supabaseAPI.select('Stories', { user_id: userId }),
+      supabaseAPI.select('Notifications', { user_id: userId })
+    ]);
+
+    const user = userData[0];
+    if (!user) {
+      return res.status(404).json({ message: 'Utilisateur non trouvé' });
+    }
+
+    // Exclure le mot de passe et les données sensibles
+    const { password, ...userWithoutPassword } = user;
+
+    const exportData = {
+      exportedAt: new Date().toISOString(),
+      exportVersion: '1.0',
+      user: userWithoutPassword,
+      tickets: tickets || [],
+      eventsCreated: events || [],
+      favorites: favorites || [],
+      following: follows || [],
+      followers: followers || [],
+      comments: comments || [],
+      stories: stories || [],
+      notifications: notifications || []
+    };
+
+    // Log de l'export pour audit
+    await supabaseAPI.insert('AuditLogs', {
+      user_id: userId,
+      action: 'data_export',
+      entity_type: 'user',
+      entity_id: userId,
+      details: { exportedAt: exportData.exportedAt },
+      created_at: new Date().toISOString()
+    }, true);
+
+    res.json(exportData);
+  } catch (err) {
+    console.error('Erreur /me/export:', err);
+    res.status(500).json({ message: 'Erreur serveur lors de l\'export des données' });
+  }
+});
+
+// =========================
+// RGPD - Suppression du compte (Article 17 - Droit à l'oubli)
+// =========================
+router.delete('/account', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { confirmPassword } = req.body;
+
+    // Vérifier que l'utilisateur existe
+    const users = await supabaseAPI.select('Users', { id: userId });
+    const user = users[0];
+
+    if (!user) {
+      return res.status(404).json({ message: 'Utilisateur non trouvé' });
+    }
+
+    // Vérifier le mot de passe pour confirmer la suppression
+    if (confirmPassword) {
+      const bcrypt = require('bcryptjs');
+      const isPasswordValid = await bcrypt.compare(confirmPassword, user.password);
+      if (!isPasswordValid) {
+        return res.status(401).json({ message: 'Mot de passe incorrect' });
+      }
+    }
+
+    const anonymizedEmail = `deleted_${userId}_${Date.now()}@anonymous.local`;
+    const deletedAt = new Date().toISOString();
+
+    // Anonymiser les données utilisateur (plutôt que supprimer pour intégrité référentielle)
+    await supabaseAPI.update('Users', {
+      email: anonymizedEmail,
+      name: 'Compte supprimé',
+      password: null,
+      bio: null,
+      avatar_url: null,
+      phone: null,
+      push_token: null,
+      deleted_at: deletedAt,
+      updated_at: deletedAt
+    }, { id: userId });
+
+    // Révoquer tous les tokens
+    await supabaseAPI.update('RefreshTokens', {
+      revoked: true,
+      revoked_at: deletedAt
+    }, { user_id: userId });
+
+    // Supprimer les stories (données éphémères)
+    await supabaseAPI.delete('Stories', { user_id: userId });
+
+    // Supprimer les notifications
+    await supabaseAPI.delete('Notifications', { user_id: userId });
+
+    // Log de la suppression pour audit
+    await supabaseAPI.insert('AuditLogs', {
+      user_id: userId,
+      action: 'account_deleted',
+      entity_type: 'user',
+      entity_id: userId,
+      details: { 
+        deletedAt,
+        anonymizedEmail,
+        reason: 'User requested account deletion (GDPR Art. 17)'
+      },
+      created_at: deletedAt
+    }, true);
+
+    res.json({ 
+      message: 'Compte supprimé avec succès',
+      deletedAt
+    });
+  } catch (err) {
+    console.error('Erreur /me/account DELETE:', err);
+    res.status(500).json({ message: 'Erreur serveur lors de la suppression du compte' });
+  }
+});
+
 router.post('/challenges/:id/claim', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;

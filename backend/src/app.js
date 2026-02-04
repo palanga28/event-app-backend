@@ -66,7 +66,7 @@ app.use(cors({
   credentials: true
 }));
 
-// Rate limiting
+// Rate limiting global
 if (process.env.NODE_ENV !== 'development') {
   const limiter = rateLimit({
     windowMs: 1 * 60 * 1000, // 1 minute
@@ -75,6 +75,29 @@ if (process.env.NODE_ENV !== 'development') {
   });
   app.use(limiter);
 }
+
+// Rate limiting strict pour l'authentification (protection brute force)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 tentatives par IP
+  message: { message: 'Trop de tentatives de connexion, veuillez réessayer dans 15 minutes' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limiting pour la création de compte
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 heure
+  max: 5, // 5 inscriptions par IP par heure
+  message: { message: 'Trop de créations de compte, veuillez réessayer plus tard' },
+});
+
+// Rate limiting pour reset password
+const resetPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 3, // 3 demandes par IP
+  message: { message: 'Trop de demandes de réinitialisation, veuillez réessayer dans 15 minutes' },
+});
 
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
@@ -86,6 +109,12 @@ app.use(xss()); // Nettoyer les inputs contre XSS
 
 // Logger HTTP requests
 app.use(httpLogger);
+
+// Routes avec rate limiting spécifique pour l'authentification
+app.post('/api/auth/login', authLimiter);
+app.post('/api/auth/register', registerLimiter);
+app.post('/api/auth/request-password-reset', resetPasswordLimiter);
+app.post('/api/auth/reset-password', resetPasswordLimiter);
 
 // Routes
 app.use('/api/auth', authRoutes);

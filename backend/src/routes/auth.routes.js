@@ -24,7 +24,16 @@ function isValidEmail(email) {
 
 function isValidPassword(password) {
   if (typeof password !== 'string') return false;
-  return password.length >= 6;
+  // Minimum 8 caractères, au moins 1 majuscule, 1 minuscule, 1 chiffre
+  if (password.length < 8) return false;
+  if (!/[A-Z]/.test(password)) return false;
+  if (!/[a-z]/.test(password)) return false;
+  if (!/[0-9]/.test(password)) return false;
+  return true;
+}
+
+function getPasswordRequirements() {
+  return 'Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule et un chiffre';
 }
 
 function getTokenExpiryDateFromJwt(token) {
@@ -52,7 +61,7 @@ router.post('/register', async (req, res) => {
     }
 
     if (!isValidPassword(password)) {
-      return res.status(400).json({ message: 'Mot de passe invalide (min 6 caractères)' });
+      return res.status(400).json({ message: getPasswordRequirements() });
     }
 
     if (bio !== undefined && bio !== null) {
@@ -538,7 +547,7 @@ router.post('/reset-password', async (req, res) => {
     }
 
     if (!newPassword || !isValidPassword(newPassword)) {
-      return res.status(400).json({ message: 'Mot de passe invalide (min 6 caractères)' });
+      return res.status(400).json({ message: getPasswordRequirements() });
     }
 
     // Chercher le token (avec service role key pour contourner RLS)
