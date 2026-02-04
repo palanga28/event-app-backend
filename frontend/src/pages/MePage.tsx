@@ -3,8 +3,7 @@ import { useAuth } from '../auth/AuthContext'
 import { api } from '../lib/api'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { User, Camera, Image as ImageIcon, Save, Check, X, Calendar, Clock } from 'lucide-react'
+import { User, Camera, Image as ImageIcon, Save, Check, X, Clock, Download, Trash2, Shield, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function MePage() {
@@ -25,6 +24,9 @@ export default function MePage() {
   const [storyOk, setStoryOk] = useState<string | null>(null)
   const [storyError, setStoryError] = useState<string | null>(null)
   const [myStories, setMyStories] = useState<any[]>([])
+  const [exportingData, setExportingData] = useState(false)
+  const [deletingAccount, setDeletingAccount] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -124,6 +126,47 @@ export default function MePage() {
       toast.error('Erreur lors de la création de la story')
     } finally {
       setStoryLoading(false)
+    }
+  }
+
+  const { logout } = useAuth()
+
+  async function handleExportData() {
+    setExportingData(true)
+    try {
+      const res = await api.get('/api/me/export')
+      const data = res.data
+      
+      // Créer un fichier JSON téléchargeable
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `ampia-export-${new Date().toISOString().split('T')[0]}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      
+      toast.success('Données exportées avec succès')
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Erreur lors de l\'export')
+    } finally {
+      setExportingData(false)
+    }
+  }
+
+  async function handleDeleteAccount() {
+    setDeletingAccount(true)
+    try {
+      await api.delete('/api/me/account')
+      toast.success('Compte supprimé avec succès')
+      setShowDeleteConfirm(false)
+      logout()
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Erreur lors de la suppression')
+    } finally {
+      setDeletingAccount(false)
     }
   }
 
@@ -246,7 +289,7 @@ export default function MePage() {
               <div className="ampia-glass p-4 space-y-2">
                 <div className="text-xs text-white/60 font-medium">Membre depuis</div>
                 <div className="text-lg font-semibold text-white">
-                  {user.created_at ? new Date(user.created_at).toLocaleDateString('fr-FR') : 'N/A'}
+                  {profile?.created_at ? new Date(profile.created_at).toLocaleDateString('fr-FR') : 'N/A'}
                 </div>
               </div>
             </div>
@@ -441,6 +484,100 @@ export default function MePage() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Privacy & Data Section (RGPD) */}
+      <div className="ampia-glass p-6 md:p-8 space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-r from-emerald-500/20 to-teal-500/20 backdrop-blur-sm">
+            <Shield className="h-6 w-6 text-emerald-300" />
+          </div>
+          <div>
+            <h2 className="text-xl md:text-2xl font-bold text-white">Confidentialité & Données</h2>
+            <p className="text-sm text-white/60 mt-1">Gérez vos données personnelles (RGPD)</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Export Data */}
+          <div className="ampia-glass p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <Download className="h-6 w-6 text-blue-400" />
+              <div>
+                <h3 className="font-semibold text-white">Exporter mes données</h3>
+                <p className="text-sm text-white/60">Téléchargez toutes vos données (Art. 20 RGPD)</p>
+              </div>
+            </div>
+            <Button
+              onClick={handleExportData}
+              disabled={exportingData}
+              className="w-full bg-blue-600 hover:bg-blue-700"
+            >
+              {exportingData ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  Export en cours...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  Télécharger mes données
+                </>
+              )}
+            </Button>
+          </div>
+
+          {/* Delete Account */}
+          <div className="ampia-glass p-6 space-y-4 border border-red-500/20">
+            <div className="flex items-center gap-3">
+              <Trash2 className="h-6 w-6 text-red-400" />
+              <div>
+                <h3 className="font-semibold text-white">Supprimer mon compte</h3>
+                <p className="text-sm text-white/60">Action irréversible (Art. 17 RGPD)</p>
+              </div>
+            </div>
+            
+            {!showDeleteConfirm ? (
+              <Button
+                onClick={() => setShowDeleteConfirm(true)}
+                variant="outline"
+                className="w-full border-red-500/30 text-red-400 hover:bg-red-500/10"
+              >
+                <Trash2 className="h-4 w-4" />
+                Supprimer mon compte
+              </Button>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30">
+                  <AlertTriangle className="h-5 w-5 text-red-400 flex-shrink-0" />
+                  <p className="text-sm text-red-300">
+                    Cette action supprimera définitivement votre compte et toutes vos données.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => setShowDeleteConfirm(false)}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Annuler
+                  </Button>
+                  <Button
+                    onClick={handleDeleteAccount}
+                    disabled={deletingAccount}
+                    className="flex-1 bg-red-600 hover:bg-red-700"
+                  >
+                    {deletingAccount ? (
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    ) : (
+                      'Confirmer la suppression'
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )

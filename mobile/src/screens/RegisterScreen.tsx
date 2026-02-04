@@ -33,8 +33,21 @@ export default function RegisterScreen() {
       return;
     }
 
-    if (password.length < 6) {
-      setError('Le mot de passe doit contenir au moins 6 caractères');
+    // Validation mot de passe renforcée
+    if (password.length < 8) {
+      setError('Le mot de passe doit contenir au moins 8 caractères');
+      return;
+    }
+    if (!/[A-Z]/.test(password)) {
+      setError('Le mot de passe doit contenir au moins une majuscule');
+      return;
+    }
+    if (!/[a-z]/.test(password)) {
+      setError('Le mot de passe doit contenir au moins une minuscule');
+      return;
+    }
+    if (!/[0-9]/.test(password)) {
+      setError('Le mot de passe doit contenir au moins un chiffre');
       return;
     }
 

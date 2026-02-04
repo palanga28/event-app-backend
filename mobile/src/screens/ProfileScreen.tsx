@@ -16,7 +16,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { LinearGradient } from 'expo-linear-gradient';
-import { User, Ticket, Heart, Calendar, Settings, LogOut, Plus, Bell, Camera, Save, X, Edit, Image as ImageIcon, BadgeCheck } from 'lucide-react-native';
+import { User, Ticket, Heart, Calendar, Settings, LogOut, Plus, Bell, Camera, Save, X, Edit, Image as ImageIcon, BadgeCheck, Download, Trash2, Shield } from 'lucide-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { colors } from '../theme/colors';
@@ -264,6 +264,54 @@ export default function ProfileScreen() {
     );
   }
 
+  const handleExportData = async () => {
+    Alert.alert(
+      'Exporter mes données',
+      'Vous allez recevoir un fichier contenant toutes vos données personnelles (RGPD Art. 20).',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Exporter',
+          onPress: async () => {
+            try {
+              const res = await api.get('/api/me/export');
+              Alert.alert(
+                'Export réussi',
+                `Vos données ont été exportées.\n\nContenu:\n- Profil\n- ${res.data.tickets?.length || 0} billets\n- ${res.data.eventsCreated?.length || 0} événements\n- ${res.data.favorites?.length || 0} favoris`,
+                [{ text: 'OK' }]
+              );
+            } catch (err: any) {
+              Alert.alert('Erreur', err?.response?.data?.message || 'Erreur lors de l\'export');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteAccount = async () => {
+    Alert.alert(
+      '⚠️ Supprimer mon compte',
+      'Cette action est irréversible. Toutes vos données seront anonymisées et vous ne pourrez plus accéder à votre compte.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete('/api/me/account');
+              Alert.alert('Compte supprimé', 'Votre compte a été supprimé avec succès.');
+              logout();
+            } catch (err: any) {
+              Alert.alert('Erreur', err?.response?.data?.message || 'Erreur lors de la suppression');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const menuItems = [
     {
       icon: Plus,
@@ -276,6 +324,18 @@ export default function ProfileScreen() {
       label: 'Mes billets',
       onPress: () => navigation.navigate('MyTickets'),
       color: colors.primary.purple,
+    },
+    {
+      icon: Download,
+      label: 'Exporter mes données',
+      onPress: handleExportData,
+      color: colors.status.info,
+    },
+    {
+      icon: Shield,
+      label: 'Confidentialité',
+      onPress: () => navigation.navigate('Privacy'),
+      color: colors.primary.pink,
     },
   ];
 
@@ -417,6 +477,12 @@ export default function ProfileScreen() {
         <TouchableOpacity style={styles.logoutButton} onPress={logout}>
           <LogOut size={20} color={colors.status.error} />
           <Text style={styles.logoutText}>Déconnexion</Text>
+        </TouchableOpacity>
+
+        {/* Delete Account */}
+        <TouchableOpacity style={styles.deleteAccountButton} onPress={handleDeleteAccount}>
+          <Trash2 size={18} color={colors.text.muted} />
+          <Text style={styles.deleteAccountText}>Supprimer mon compte</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -789,5 +855,18 @@ const styles = StyleSheet.create({
   },
   verifiedBadge: {
     marginLeft: 4,
+  },
+  deleteAccountButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginHorizontal: 16,
+    marginBottom: 40,
+    paddingVertical: 12,
+  },
+  deleteAccountText: {
+    fontSize: 14,
+    color: colors.text.muted,
   },
 });

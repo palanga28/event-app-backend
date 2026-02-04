@@ -17,9 +17,24 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  function validatePassword(pwd: string): string | null {
+    if (pwd.length < 8) return 'Le mot de passe doit contenir au moins 8 caractères'
+    if (!/[A-Z]/.test(pwd)) return 'Le mot de passe doit contenir au moins une majuscule'
+    if (!/[a-z]/.test(pwd)) return 'Le mot de passe doit contenir au moins une minuscule'
+    if (!/[0-9]/.test(pwd)) return 'Le mot de passe doit contenir au moins un chiffre'
+    return null
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+
+    const pwdError = validatePassword(password)
+    if (pwdError) {
+      setError(pwdError)
+      return
+    }
+
     setLoading(true)
     try {
       await register(name, email, password, bio)

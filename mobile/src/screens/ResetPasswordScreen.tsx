@@ -42,8 +42,21 @@ export default function ResetPasswordScreen() {
       return;
     }
 
-    if (newPassword.length < 6) {
-      setError('Le mot de passe doit contenir au moins 6 caractères');
+    // Validation mot de passe renforcée
+    if (newPassword.length < 8) {
+      setError('Le mot de passe doit contenir au moins 8 caractères');
+      return;
+    }
+    if (!/[A-Z]/.test(newPassword)) {
+      setError('Le mot de passe doit contenir au moins une majuscule');
+      return;
+    }
+    if (!/[a-z]/.test(newPassword)) {
+      setError('Le mot de passe doit contenir au moins une minuscule');
+      return;
+    }
+    if (!/[0-9]/.test(newPassword)) {
+      setError('Le mot de passe doit contenir au moins un chiffre');
       return;
     }
 
