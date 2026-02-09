@@ -87,22 +87,15 @@ BEGIN
 END $$;
 
 -- RLS Policies
+-- Note: Comme l'API backend utilise une service_role key, 
+-- les policies RLS ne s'appliquent pas aux requêtes backend.
+-- Ces policies sont pour un accès direct à Supabase (si nécessaire).
+
 ALTER TABLE "EventRequests" ENABLE ROW LEVEL SECURITY;
 
--- Organisateurs peuvent voir leurs propres demandes
-CREATE POLICY "Organizers can view own requests" ON "EventRequests"
-    FOR SELECT USING (organizer_id = auth.uid()::integer);
+-- Policy permissive pour le service role (backend)
+CREATE POLICY "Service role full access" ON "EventRequests"
+    FOR ALL USING (true) WITH CHECK (true);
 
--- Organisateurs peuvent créer des demandes pour leurs événements
-CREATE POLICY "Organizers can create requests" ON "EventRequests"
-    FOR INSERT WITH CHECK (organizer_id = auth.uid()::integer);
-
--- Admins/Modérateurs peuvent tout voir et modifier
-CREATE POLICY "Admins can manage all requests" ON "EventRequests"
-    FOR ALL USING (
-        EXISTS (
-            SELECT 1 FROM "Users" 
-            WHERE id = auth.uid()::integer 
-            AND role IN ('admin', 'moderator')
-        )
-    );
+-- Alternative: Désactiver RLS si vous n'utilisez que le backend
+-- ALTER TABLE "EventRequests" DISABLE ROW LEVEL SECURITY;

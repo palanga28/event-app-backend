@@ -27,7 +27,8 @@ import {
   ShieldCheck,
   BadgeCheck,
   Star,
-  RotateCcw
+  RotateCcw,
+  CalendarClock
 } from 'lucide-react'
 
 type Stats = {
@@ -61,6 +62,7 @@ const navItems = [
   { path: '/admin/verifications', label: 'Vérifications', icon: BadgeCheck },
   { path: '/admin/carousel', label: 'Carrousel', icon: Star },
   { path: '/admin/refunds', label: 'Remboursements', icon: RotateCcw },
+  { path: '/admin/event-requests', label: 'Demandes événements', icon: CalendarClock },
   { path: '/admin/users', label: 'Utilisateurs', icon: Users },
   { path: '/admin/events', label: 'Événements', icon: Calendar },
   { path: '/admin/payments', label: 'Paiements', icon: CreditCard },
