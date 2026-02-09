@@ -27,6 +27,7 @@ import {
   ChevronRight,
   Plus,
   RotateCcw,
+  CalendarClock,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -391,6 +392,13 @@ export default function Navbar() {
                     >
                       <RotateCcw className="h-4 w-4 text-orange-400" />
                       Remboursements
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onSelect={() => navigate('/admin/event-requests')} 
+                      className="gap-3 text-white hover:bg-white/10 cursor-pointer"
+                    >
+                      <CalendarClock className="h-4 w-4 text-amber-400" />
+                      Demandes événements
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-white/10" />
                     <DropdownMenuItem 
@@ -845,6 +853,20 @@ export default function Navbar() {
                       >
                         <RotateCcw className="h-5 w-5 text-orange-400" />
                         Remboursements
+                        <ChevronRight className="h-4 w-4 ml-auto text-white/40" />
+                      </NavLink>
+                      <NavLink
+                        to="/admin/event-requests"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={({ isActive }) =>
+                          `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 ${isActive
+                            ? 'bg-red-500/20 text-red-200'
+                            : 'text-white/70 hover:text-white hover:bg-red-500/10'
+                          }`
+                        }
+                      >
+                        <CalendarClock className="h-5 w-5 text-amber-400" />
+                        Demandes événements
                         <ChevronRight className="h-4 w-4 ml-auto text-white/40" />
                       </NavLink>
                       <NavLink

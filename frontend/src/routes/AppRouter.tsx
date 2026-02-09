@@ -37,6 +37,7 @@ import AdminModerationPage from '../pages/admin/AdminModerationPage'
 import AdminVerificationsPage from '../pages/admin/AdminVerificationsPage'
 import AdminCarouselPage from '../pages/admin/AdminCarouselPage'
 import AdminRefundsPage from '../pages/admin/AdminRefundsPage'
+import AdminEventRequestsPage from '../pages/admin/AdminEventRequestsPage'
 import RequireAuth from './RequireAuth'
 import RequireRole from './RequireRole'
 
@@ -206,6 +207,10 @@ export default function AppRouter() {
                     {
                       path: 'admin/refunds',
                       element: <AdminRefundsPage />,
+                    },
+                    {
+                      path: 'admin/event-requests',
+                      element: <AdminEventRequestsPage />,
                     },
                   ],
                 },
