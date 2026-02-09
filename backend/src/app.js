@@ -27,6 +27,7 @@ const eventLikesRoutes = require('./routes/event-likes.routes');
 const notificationsRoutes = require('./routes/notifications.routes');
 const meRoutes = require('./routes/me.routes');
 const paymentRoutes = require('./routes/payment.routes');
+const eventRequestRoutes = require('./routes/event-request.routes');
 let organizerRoutes;
 try {
   organizerRoutes = require('./routes/organizer.routes');
@@ -174,6 +175,9 @@ app.use('/api/challenges', challengesRoutes);
 // Refund routes (remboursements)
 const refundRoutes = require('./routes/refund.routes');
 app.use('/api/refunds', refundRoutes);
+
+// Event request routes (report/annulation d'événements)
+app.use('/api/event-requests', eventRequestRoutes);
 
 // Health check étendu pour production
 app.get('/health', async (req, res) => {

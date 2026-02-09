@@ -11,15 +11,49 @@ console.log('✅ refund.routes chargé');
 // CONFIGURATION REMBOURSEMENT
 // =========================
 const REFUND_CONFIG = {
-  // Délai maximum pour demander un remboursement (en heures avant l'événement)
-  MIN_HOURS_BEFORE_EVENT: 24,
   // Pourcentage remboursé (peut être < 100% pour couvrir les frais)
   REFUND_PERCENT: 100,
   // Statuts de ticket éligibles au remboursement
-  ELIGIBLE_STATUSES: ['active'],
+  ELIGIBLE_STATUSES: ['active', 'refund_pending'],
   // Mode test (pas d'appel WonyaSoft réel)
   TEST_MODE: false,
 };
+
+// =========================
+// CONDITIONS DE REMBOURSEMENT
+// Un remboursement est valide si:
+// 1. Le billet est actif
+// 2. L'événement a été annulé (event_status = 'cancelled')
+// 3. L'organisateur a été suspendu/banni
+// =========================
+async function checkRefundEligibility(ticket, event, organizer) {
+  const reasons = [];
+  
+  // Condition 1: Billet actif
+  if (!REFUND_CONFIG.ELIGIBLE_STATUSES.includes(ticket.status)) {
+    return { eligible: false, reason: `Ticket non éligible (statut: ${ticket.status})` };
+  }
+
+  // Condition 2: Événement annulé
+  if (event.event_status === 'cancelled') {
+    reasons.push('Événement annulé');
+  }
+
+  // Condition 3: Organisateur suspendu/banni
+  if (organizer && (organizer.is_banned || organizer.is_suspended)) {
+    reasons.push('Organisateur suspendu');
+  }
+
+  // Si aucune condition de remboursement automatique n'est remplie
+  if (reasons.length === 0) {
+    return { 
+      eligible: false, 
+      reason: 'Remboursement non disponible. Conditions: événement annulé ou organisateur suspendu.' 
+    };
+  }
+
+  return { eligible: true, reasons };
+}
 
 // =========================
 // DEMANDER UN REMBOURSEMENT (Utilisateur)
@@ -48,13 +82,6 @@ router.post('/request', authMiddleware, async (req, res) => {
       return res.status(403).json({ message: 'Ce ticket ne vous appartient pas' });
     }
 
-    // Vérifier le statut du ticket
-    if (!REFUND_CONFIG.ELIGIBLE_STATUSES.includes(ticket.status)) {
-      return res.status(400).json({ 
-        message: `Ticket non éligible au remboursement (statut: ${ticket.status})` 
-      });
-    }
-
     // Vérifier si un remboursement est déjà en cours
     const existingRefunds = await supabaseAPI.select('Refunds', { 
       ticket_id: ticketIdNum,
@@ -75,15 +102,15 @@ router.post('/request', authMiddleware, async (req, res) => {
       return res.status(404).json({ message: 'Événement non trouvé' });
     }
 
-    // Vérifier le délai avant l'événement
-    const eventDate = new Date(event.start_date);
-    const now = new Date();
-    const hoursUntilEvent = (eventDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+    // Récupérer l'organisateur
+    const organizers = await supabaseAPI.select('Users', { id: event.organizer_id }, {}, true);
+    const organizer = organizers[0];
 
-    if (hoursUntilEvent < REFUND_CONFIG.MIN_HOURS_BEFORE_EVENT) {
-      return res.status(400).json({ 
-        message: `Remboursement impossible moins de ${REFUND_CONFIG.MIN_HOURS_BEFORE_EVENT}h avant l'événement` 
-      });
+    // Vérifier l'éligibilité au remboursement
+    const eligibility = await checkRefundEligibility(ticket, event, organizer);
+    
+    if (!eligibility.eligible) {
+      return res.status(400).json({ message: eligibility.reason });
     }
 
     // Récupérer le paiement original

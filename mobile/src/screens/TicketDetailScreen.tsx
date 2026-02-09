@@ -32,6 +32,13 @@ interface TicketDetail {
     location: string;
     images?: string | string[];
     cover_image?: string;
+    event_status?: string;
+    organizer?: {
+      id: number;
+      name: string;
+      is_banned?: boolean;
+      is_suspended?: boolean;
+    };
   };
   ticketType: {
     id: number;
@@ -114,12 +121,20 @@ export default function TicketDetailScreen() {
     if (!ticket) return false;
     if (ticket.status !== 'active') return false;
     
-    // Vérifier si l'événement est dans plus de 24h
-    const eventDate = new Date(ticket.event.date || ticket.event.start_date || new Date());
-    const now = new Date();
-    const hoursUntilEvent = (eventDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+    // Remboursement disponible si:
+    // 1. L'événement est annulé
+    // 2. L'organisateur est suspendu/banni
+    const eventCancelled = ticket.event.event_status === 'cancelled';
+    const organizerSuspended = ticket.event.organizer?.is_banned || ticket.event.organizer?.is_suspended;
     
-    return hoursUntilEvent >= 24;
+    return eventCancelled || organizerSuspended;
+  };
+
+  const getRefundReason = () => {
+    if (!ticket) return '';
+    if (ticket.event.event_status === 'cancelled') return 'Événement annulé';
+    if (ticket.event.organizer?.is_banned || ticket.event.organizer?.is_suspended) return 'Organisateur suspendu';
+    return '';
   };
 
   const handleRefundRequest = () => {
