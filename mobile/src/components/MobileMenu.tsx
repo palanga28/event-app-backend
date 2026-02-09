@@ -27,6 +27,7 @@ import {
   Settings,
   Wallet,
   BadgeCheck,
+  ScanLine,
 } from 'lucide-react-native';
 import { colors } from '../theme/colors';
 import { useAuth } from '../contexts/AuthContext';
@@ -186,6 +187,15 @@ export function MobileMenu({ visible, onClose }: MobileMenuProps) {
                 >
                   <Wallet size={20} color="#10b981" />
                   <Text style={styles.menuItemText}>Mes gains</Text>
+                  <ChevronRight size={16} color={colors.text.muted} style={styles.chevron} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={() => handleNavigate('QRScanner')}
+                >
+                  <ScanLine size={20} color="#06b6d4" />
+                  <Text style={styles.menuItemText}>Scanner un ticket</Text>
                   <ChevronRight size={16} color={colors.text.muted} style={styles.chevron} />
                 </TouchableOpacity>
 
