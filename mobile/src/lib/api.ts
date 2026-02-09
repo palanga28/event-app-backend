@@ -8,7 +8,7 @@ const API_BASE_URL = __DEV__
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000, // Augmenté à 30 secondes pour les opérations lentes
+  timeout: 120000, // 2 minutes pour les uploads d'images
   headers: {
     'Content-Type': 'application/json',
   },
