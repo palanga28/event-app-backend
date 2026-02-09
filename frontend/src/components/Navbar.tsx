@@ -26,6 +26,7 @@ import {
   X,
   ChevronRight,
   Plus,
+  RotateCcw,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -383,6 +384,13 @@ export default function Navbar() {
                     >
                       <User className="h-4 w-4 text-cyan-400" />
                       Utilisateurs
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onSelect={() => navigate('/admin/refunds')} 
+                      className="gap-3 text-white hover:bg-white/10 cursor-pointer"
+                    >
+                      <RotateCcw className="h-4 w-4 text-orange-400" />
+                      Remboursements
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-white/10" />
                     <DropdownMenuItem 
@@ -823,6 +831,20 @@ export default function Navbar() {
                       >
                         <User className="h-5 w-5 text-cyan-400" />
                         Utilisateurs
+                        <ChevronRight className="h-4 w-4 ml-auto text-white/40" />
+                      </NavLink>
+                      <NavLink
+                        to="/admin/refunds"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={({ isActive }) =>
+                          `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 ${isActive
+                            ? 'bg-red-500/20 text-red-200'
+                            : 'text-white/70 hover:text-white hover:bg-red-500/10'
+                          }`
+                        }
+                      >
+                        <RotateCcw className="h-5 w-5 text-orange-400" />
+                        Remboursements
                         <ChevronRight className="h-4 w-4 ml-auto text-white/40" />
                       </NavLink>
                       <NavLink
