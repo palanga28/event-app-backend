@@ -25,6 +25,7 @@ import { AnimatedImage } from '../components/AnimatedImage';
 import { useAuth } from '../contexts/AuthContext';
 import { OfflineBanner } from '../components/OfflineBanner';
 import { cacheService } from '../services/cacheService';
+import GilbertBot from '../components/GilbertBot';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48) / 2;
@@ -362,6 +363,9 @@ export default function HomeScreen() {
         colors={colors.gradients.dark as [string, string]}
         style={StyleSheet.absoluteFill}
       />
+      
+      {/* Bot Gilbert pour l'onboarding */}
+      <GilbertBot />
       
       {/* Bannière mode hors ligne */}
       <OfflineBanner isFromCache={isFromCache} />

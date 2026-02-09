@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { CalendarDays, Search } from 'lucide-react'
 import { EventCard } from '@/components/EventCard'
+import GilbertBot from '@/components/GilbertBot'
 
 type Organizer = {
   id: number
@@ -246,6 +247,9 @@ export default function HomePage() {
 
   return (
     <div className="space-y-8 animate-fade-in">
+      {/* Bot Gilbert pour l'onboarding */}
+      <GilbertBot />
+      
       {/* Stories Section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
